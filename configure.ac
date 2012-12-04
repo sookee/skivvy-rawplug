@@ -21,8 +21,8 @@
 # 
 # '-----------------------------------------------------------------*/
 
-AC_INIT([skivvy-rconics],[0.1],[oasookee@gmail.com],[skivvy-rconics])
-AC_CONFIG_SRCDIR([src/plugin-rconics.cpp])
+AC_INIT([skivvy-grabber],[0.1],[oaskivvy@gmail.com],[skivvy-grabber])
+AC_CONFIG_SRCDIR([src/plugin-grabber.cpp])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([1.10 foreign])
