@@ -47,7 +47,7 @@ plugin_LTLIBRARIES =  \
 	skivvy-plugin-grabber.la
 
 # IrcBot plugins
-skivvy_plugin_grabber_la_SOURCES = plugin-grabber.cpp rcon.cpp
+skivvy_plugin_grabber_la_SOURCES = plugin-grabber.cpp
 skivvy_plugin_grabber_la_LDFLAGS = -module
 
 docs_DATA = $(top_srcdir)/docs/manual.text
