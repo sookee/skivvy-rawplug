@@ -44,11 +44,11 @@ BOTLIBS = -lskivvy -ldl
 BOTFLAGS = -Wl,-E
 
 plugin_LTLIBRARIES =  \
-	skivvy-plugin-grabber.la
+	skivvy-plugin-rawplug.la
 
 # IrcBot plugins
-skivvy_plugin_grabber_la_SOURCES = plugin-grabber.cpp
-skivvy_plugin_grabber_la_LDFLAGS = -module
+skivvy_plugin_rawplug_la_SOURCES = plugin-rawplug.cpp
+skivvy_plugin_rawplug_la_LDFLAGS = -module
 
 docs_DATA = $(top_srcdir)/docs/manual.text
 
