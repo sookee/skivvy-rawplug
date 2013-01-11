@@ -1,15 +1,15 @@
 #pragma once
-#ifndef _SOOKEE_IRCBOT_GRABBER_H_
-#define _SOOKEE_IRCBOT_GRABBER_H_
+#ifndef _SKIVVY_IRCBOT_RAWPLUG_H_
+#define _SKIVVY_IRCBOT_RAWPLUG_H_
 /*
- * ircbot-grabber.h
+ * plugin-rawplug.h
  *
- *  Created on: 29 Jul 2011
+ *  Created on: 10 Dec 2012
  *      Author: oaskivvy@gmail.com
  */
 
 /*-----------------------------------------------------------------.
-| Copyright (C) 2011 SooKee oaskivvy@gmail.com               |
+| Copyright (C) 2012 SooKee oaskivvy@gmail.com               |
 '------------------------------------------------------------------'
 
 This program is free software; you can redistribute it and/or
@@ -35,16 +35,10 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <deque>
 #include <mutex>
+#include <cstdio>
+#include <cstdlib>
 
 namespace skivvy { namespace ircbot {
-
-struct entry;
-struct quote
-{
-	time_t stamp;
-	message msg;
-	quote(const message& msg): stamp(time(0)), msg(msg) {}
-};
 
 /**
  * PROPERTIES: (Accesed by: bot.props["property"])
@@ -57,21 +51,12 @@ class RawplugIrcBotPlugin
  , public IrcBotMonitor
 {
 public:
-	typedef std::deque<quote> quote_que;
-	typedef quote_que::iterator quote_iter;
-	typedef quote_que::const_iterator quote_citer;
+	typedef std::vector<FILE*> FILE_vec;
 
 private:
+	FILE_vec pipe;
 
-	std::mutex mtx_grabfile; // database
-	std::mutex mtx_quotes; // message queue
-	quote_que quotes;
-	size_t max_quotes; // message queue
-
-	void grab(const message& msg);
-	void rq(const message& msg);
-
-	void store(const entry& e);
+	void exec(const message& msg);
 
 public:
 	RawplugIrcBotPlugin(IrcBot& bot);
@@ -94,4 +79,4 @@ public:
 
 }} // sookee::ircbot
 
-#endif // _SOOKEE_IRCBOT_GRABBER_H_
+#endif // _SKIVVY_IRCBOT_RAWPLUG_H_

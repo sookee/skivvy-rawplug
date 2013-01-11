@@ -36,6 +36,8 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <sstream>
 #include <iostream>
 
+//#include <unistd.h>
+
 #include <skivvy/logrep.h>
 #include <skivvy/str.h>
 
@@ -48,8 +50,7 @@ using namespace skivvy::types;
 using namespace skivvy::utils;
 using namespace skivvy::string;
 
-const str DATA_FILE = "grabber.data_file";
-const str DATA_FILE_DEFAULT = "grabber-data.txt";
+const str EXEC = "rawplug.exec";
 
 struct entry
 {
@@ -61,7 +62,7 @@ struct entry
 };
 
 entry::entry(const quote& q)
-: nick(q.msg.get_sender())
+: nick(q.msg.get_nick())
 , text(q.msg.text)
 {
 	std::ostringstream oss;
@@ -83,144 +84,31 @@ RawplugIrcBotPlugin::RawplugIrcBotPlugin(IrcBot& bot)
 
 RawplugIrcBotPlugin::~RawplugIrcBotPlugin() {}
 
-void RawplugIrcBotPlugin::grab(const message& msg)
+void RawplugIrcBotPlugin::exec(const message& msg)
 {
 	BUG_COMMAND(msg);
 
-	str nick;
-	std::istringstream iss(msg.get_user_params());
-	if(!(iss >> nick))
-	{
-		bot.fc_reply(msg, "I failed to grasp it... :(");
-		return;
-	}
-
-	// TODO: Remove  && nick != "SooKee" (debugging)
-	if(msg.get_sender() == nick && nick != "SooKee")
-	{
-		bot.fc_reply(msg, "Please don't grab yourself in public " + msg.get_sender() + "!");
-		return;
-	}
-
-	if(nick == bot.nick)
-	{
-		bug("grabber: " << msg.get_sender());
-		bot.fc_reply(msg, "Sorry " + msg.get_sender() + ", look but don't touch!");
-		return;
-	}
-
-	size_t n = 1;
-	str sub; // substring match text for grab
-
-	if(!(iss >> n))
-	{
-		iss.clear();
-		std::getline(iss, sub);
-		trim(sub);
-	}
-
-	bug("  n: " << n);
-	bug("sub: " << sub);
-
-	if(n > quotes.size())
-	{
-		std::ostringstream oss;
-		oss << "My memory fails me. That was over ";
-		oss << quotes.size() << " comments ago. ";
-		oss << "Who can remember all that stuff?";
-		bot.fc_reply(msg, oss.str());
-		return;
-	}
-
-	quote_citer q;
-
-	mtx_quotes.lock();
-	bool skipped = false;
-	for(q = quotes.begin(); n && q != quotes.end(); ++q)
-		if(sub.empty())
-		{
-			if(lowercase(q->msg.get_sender()) == lowercase(nick))
-				if(!(--n))
-					break;
-		}
-		else
-		{
-			if(lowercase(q->msg.get_sender()) == lowercase(nick))
-				if(q->msg.text.find(sub) != str::npos && skipped)
-					break;
-			skipped = true;
-		}
-
-
-	if(q != quotes.end())
-	{
-		store(entry(*q));
-		bot.fc_reply(msg, nick + " has been grabbed: " + q->msg.text.substr(0, 16) + "...");
-	}
-	mtx_quotes.unlock();
-}
-
-void RawplugIrcBotPlugin::store(const entry& e)
-{
-	bug_func();
-	bug("stamp: " << e.stamp);
-	bug(" nick: " << e.nick);
-	bug(" text: " << e.text);
-
-	const str datafile = bot.getf(DATA_FILE, DATA_FILE_DEFAULT);
-
-	std::ofstream ofs(datafile, std::ios::app);
-	if(!ofs)
-		log("ERROR: Cannot open grabfile for output: " << datafile);
-	mtx_grabfile.lock();
-	ofs << e.stamp << ' ' << e.nick << ' ' << e.text << '\n';
-	mtx_grabfile.unlock();
-}
-
-void RawplugIrcBotPlugin::rq(const message& msg)
-{
-	str nick = lowercase(msg.get_user_params());
-	trim(nick);
-
-	const str datafile = bot.getf(DATA_FILE, DATA_FILE_DEFAULT);
-
-	std::ifstream ifs(datafile);
-	if(!ifs) log("ERROR: Cannot open grabfile for input: " << datafile);
-	str t, n, q;
-	std::vector<entry> full_match_list;
-	std::vector<entry> part_match_list;
-
-	mtx_grabfile.lock();
-	while(std::getline((ifs >> t >> n), q))
-	{
-		if(nick.empty() || lowercase(n) == nick)
-			full_match_list.push_back(entry(t, n, q));
-		if(nick.empty() || lowercase(n).find(nick) != str::npos)
-			part_match_list.push_back(entry(t, n, q));
-	}
-	mtx_grabfile.unlock();
-
-	if(full_match_list.empty())
-		full_match_list.assign(part_match_list.begin(), part_match_list.end());
-
-	if(!full_match_list.empty())
-	{
-		const entry& e = full_match_list[rand_int(0, full_match_list.size() - 1)];
-		bot.fc_reply(msg, "<" + e.nick + "> " + e.text);
-	}
 }
 
 // INTERFACE: BasicIrcBotPlugin
 
 bool RawplugIrcBotPlugin::initialize()
 {
-	add
-	({
-		"!grab"
-		, "!grab <nick> [<number>|<text>] Grab what <nick> said"
-			" an optional <number> of comments back, OR that contains <text>."
-		, [&](const message& msg){ grab(msg); }
-	});
+	str_vec execs = bot.get_vec(EXEC);
+
+	for(str& exec: execs)
+	{
+		log("loading exec: " << exec);
+		FILE* p = popen(exec, "rw");
+
+		add
+		({
+			"!grab"
+			, "!grab <nick> [<number>|<text>] Grab what <nick> said"
+				" an optional <number> of comments back, OR that contains <text>."
+			, [&](const message& msg){ exec(msg); }
+		});
+	}
 	add
 	({
 		"!rq"
