@@ -24,5 +24,7 @@
 # Example Config for IrcBot called Skivvy
 # Rename this file to skivvy.conf
 
-rawplug.exec: rawplug-test.sh
+rawplug.dir: $HOME/.skivvy/rawplug
+rawplug.dir: $HOME/dev/cpp/skivvy-rawplug/plugins
+rawplug.exe: rawplug-test-00.sh
 
