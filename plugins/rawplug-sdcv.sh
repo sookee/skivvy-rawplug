@@ -45,6 +45,7 @@ sk_add_command()
 	fi
 }
 
+## Get nick from msg structure
 sk_msg_get_nick()
 {
 	echo ${sk_msg[from]%%\!*}
@@ -66,12 +67,12 @@ sk_reply()
 {
 	if [[ ${sk_msg[to]:0:1} == '#' ]]; then
 		# echo "/say ${sk_msg[to]} $*."
-		sk_say ${sk_msg[to]} "$*."
+		sk_say ${sk_msg[to]} "$*"
 	else
 		# from.substr(0, from.find("!")); // ${from%\!*}
 		# echo "/say ${sk_msg[from]%%\!*} $*."
 		# echo "/say $(sk_msg_get_nick) $*."
-		sk_say $(sk_msg_get_nick) "$*."
+		sk_say $(sk_msg_get_nick) "$*"
 	fi
 }
 
@@ -92,6 +93,7 @@ do
 		'initialize')
 			sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 			sk_add_command "!php" "PHP function reference [abbreviated]"
+			sk_add_command "!calc" "Calculator"
 			sk_add_command "!raw" "Rawplug Test Function"
 			sk_end_initialize
 		;;
@@ -135,6 +137,13 @@ do
 				echo "/say ${sk_msg[to]} word: \"$word\" not found."
 			fi
 		;;
+		'!calc')
+			sk_read_msg
+			# ${g//\*/\\*}
+			#math=$(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
+			#math=$(echo "$math"|bc)
+			sk_reply "=" $(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
+		;;
 		'!raw')
 			sk_read_msg
 			sk_reply "Do I reply to the right place?"
@@ -142,6 +151,7 @@ do
 		*)
 			# errors
 			log "error: unknown command: $line"	
+			echo "/nop"
 		;;
 	esac
 done
