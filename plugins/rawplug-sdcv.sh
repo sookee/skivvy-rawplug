@@ -71,12 +71,11 @@ sk_reply()
 	fi
 }
 
-LOG_FILE="$HOME/tmp/rawplug.log"
-CPPFLUSH="$HOME/bin/cppflush"
+LOG_FILE="rawplug.log"
 
 log()
 {
-	echo "$(date +%Y%m%d-%H%M%S): $1" | $CPPFLUSH >> $LOG_FILE
+	echo "$(date +%Y%m%d-%H%M%S): $1" >> $LOG_FILE
 }
 
 while read line
@@ -108,9 +107,8 @@ do
 			sk_read_msg
 
 			word=$(echo "${sk_msg[text]}"|cut -d " " -f 2)
-			entry=$(sdcv -u 'The Britannica Concise' -n "$word")
-			text=$(echo $entry|cut -d "-" -f 5-)
-			text=$(echo $text|cut -d "." -f 1)
+			text=$(sdcv -u 'The Britannica Concise' -n "$word")
+			text=$(echo $text|cut -d "-" -f 5-|cut -d "." -f 1)
 			
 			if [[ ${text:1:${#word}} == $word ]]; then
 				sk_reply "$text."
@@ -122,9 +120,8 @@ do
 			sk_read_msg
 
 			word=$(echo "${sk_msg[text]}"|cut -d " " -f 2)
-			entry=$(sdcv -u 'php' -n "$word")
-			text=$(echo $entry|cut -d "-" -f 5-)
-			text=$(echo $text|cut -d "." -f 1)
+			text=$(sdcv -u 'php' -n "$word")
+			text=$(echo $text|cut -d "-" -f 5-|cut -d "." -f 1)
 			
 			if [[ ${text:1:${#word}} == $word ]]; then
 				sk_reply "$text."
