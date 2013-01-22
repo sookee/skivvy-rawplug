@@ -35,6 +35,11 @@ sk_read_msg()
 	read sk_msg[text]	
 }
 
+sk_say()
+{
+	echo "/say ${sk_msg[to]} $*."
+}
+
 LOG_FILE="$HOME/tmp/rawplug.log"
 CPPFLUSH="$HOME/bin/cppflush"
 
@@ -51,56 +56,54 @@ do
 	
 		'initialize')
 			echo "add_command" # Receive parsed IRC message
-			echo "!cmd1"
-			echo "Ecample command 1"
-			echo "Does example 1 type things"
+			echo "!brit"
+			echo "Britanica Concise Info [abbreviated]"
 			echo "end_command"
-			echo "add_raw_command" # Receive raw IRC protocol
-			echo "!cmd2"
-			echo "Ecample command 2"
-			echo "Does example 2 type things"
+			echo "add_command" # Receive parsed IRC message
+			echo "!php"
+			echo "PHP function reference [abbreviated]"
 			echo "end_command"
-			#echo "add_monitor" # Only if you want to receive all channel messages
-			#echo "add_raw_monitor" # Only if you want to receive all channel messages
 			echo "end_initialize"
 		;;
 		'get_id')
-			echo "rawplug-test-00"
+			echo "rawplug-sdcv"
 		;;
 		'get_name')
-			echo "A Rawplug Test Script 00"
+			echo "sdcv interface."
 		;;
 		'get_version')
-			echo "0.00"
+			echo "0.01"
 		;;
 		'exit')
 			exit 0
 		;;
-		'!cmd1')
+		'!brit')
 			sk_read_msg
-			# mgs examples
-			# msg_line   :SooKee!~SooKee@SooKee.users.quakenet.org PRIVMSG #skivvy :!oafind all
-			# msg_from   SooKee!~SooKee@SooKee.users.quakenet.org
-			# msg_cmd    PRIVMSG
-			# msg_params #skivvy
-			# msg_to     #skivvy
-			# msg_text   !oafind all
-		
-			echo "/say ${sk_msg[to]} rawplug is working!!"
+
+			word=$(echo "${sk_msg[text]}"|cut -d " " -f 2)
+			entry=$(sdcv -u 'The Britannica Concise' -n "$word")
+			text=$(echo $entry|cut -d "-" -f 5-)
+			text=$(echo $text|cut -d "." -f 1)
+			
+			if [[ ${text:1:${#word}} == $word ]]; then
+				echo "/say ${sk_msg[to]} $text."
+			else
+				echo "/say ${sk_msg[to]} word: \"$word\" not found."
+			fi
 		;;
-		'!cmd2')
-			read msg_line
-			# $msg_line examples
-			# :Skivvy!~Skivvy@Skivvy.users.quakenet.org JOIN #openarenahelp
-			# :Zimmermint!~Zimmy@5ac0ceb1.bb.sky.com PRIVMSG #skivvy-admin :Hello all
-			# :Q!TheQBot@CServe.quakenet.org MODE #omfg +v satyamash
-			# :Skivvy!~Skivvy@Skivvy.users.quakenet.org QUIT :Signed off
-			echo "/say #skivvy rawplug is working!!"
-		;;
-		'event')
-			# If add_moniter was done unknown lines are raw monitor data else errors
-			read msg
-			#echo "monitor: $msg"	
+		'!php')
+			sk_read_msg
+
+			word=$(echo "${sk_msg[text]}"|cut -d " " -f 2)
+			entry=$(sdcv -u 'php' -n "$word")
+			text=$(echo $entry|cut -d "-" -f 5-)
+			text=$(echo $text|cut -d "." -f 1)
+			
+			if [[ ${text:1:${#word}} == $word ]]; then
+				echo "/say ${sk_msg[to]} $text."
+			else
+				echo "/say ${sk_msg[to]} word: \"$word\" not found."
+			fi
 		;;
 		*)
 			# errors

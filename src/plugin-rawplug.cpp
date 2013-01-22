@@ -111,12 +111,6 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 
 	bug_var(raw);
 
-//	std::map<str, stdiostream_sptr>::iterator stdit;
-//	if((stdit = stdos.find(id)) == stdos.end())
-//		return log_report("No communication wth this plugin: ");
-//
-//	std::ostream& stdo = *stdit->second;
-
 	if(!stdos[id].get())
 		return log_report("No communication wth this plugin: ");
 
@@ -190,8 +184,9 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		stdo << "initialize" << std::endl;
 		while(sgl(stdi, line) && line != "end_initialize")
 		{
-			bool raw = false;
-			if(line == "add_command" || (raw = (line == "add_raw_command")))
+			bool raw_cmd = false;
+			bool raw_mon = false;
+			if(line == "add_command" || (raw_cmd = (line == "add_raw_command")))
 			{
 				str cmd;
 				if(!sgl(stdi, line) || line.empty() || line[0] != '!')
@@ -204,20 +199,36 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 					help += sep + line;
 					sep = '\n';
 				}
-				if(raw)
+				if(raw_cmd)
+				{
+					cmds.erase(id);
 					raw_cmds[cmd] = id;
+				}
 				else
+				{
+					raw_cmds.erase(id);
 					cmds[cmd] = id;
+				}
 
 				add
 				({
 					cmd, help, [&](const message& msg){ this->exec(msg); }
 				});
 			}
-			else if(line == "add_monitor")
+			else if(line == "add_monitor" || (raw_mon = (line == "add_raw_command")))
 			{
+				// Ensure only rw_monitors or monitors but not both
 				bot.add_monitor(*this);
-				monitors.insert(id);
+				if(raw_mon)
+				{
+					monitors.erase(id);
+					raw_monitors.insert(id);
+				}
+				else
+				{
+					raw_monitors.erase(id);
+					monitors.insert(id);
+				}
 			}
 		}
 		stdis[id] = stdip;
@@ -237,12 +248,13 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		close(pipe_out[1]);
 		close(pipe_in[0]);
 		close(pipe_in[1]);
+
 		str plugin_name = dir + "/" + exec;
 		execl(plugin_name.c_str(), plugin_name.c_str(), (char*)0);
-		return 1; /* Only reached if execl() failed */
+		return false; /* Only reached if execl() failed */
 	}
 
-	return 0;
+	return true;
 }
 
 // INTERFACE: BasicIrcBotPlugin
@@ -305,9 +317,19 @@ void RawplugIrcBotPlugin::exit()
 void RawplugIrcBotPlugin::event(const message& msg)
 {
 	// distribute to all monitoring plugins
-	for(const str& id: monitors)
+	for(const str& id: raw_monitors)
 		if(stdos[id])
 			*stdos[id] << "event" << std::endl << msg.line << std::endl;
+
+	for(const str& id: monitors)
+		if(stdos[id])
+		{
+			*stdos[id] << msg.from << std::endl;
+			*stdos[id] << msg.cmd << std::endl;
+			*stdos[id] << msg.params << std::endl;
+			*stdos[id] << msg.to << std::endl;
+			*stdos[id] << msg.text << std::endl;
+		}
 }
 
 }} // sookee::ircbot

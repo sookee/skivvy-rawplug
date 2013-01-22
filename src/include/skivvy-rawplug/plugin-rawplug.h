@@ -123,6 +123,7 @@ private:
 	str_map cmds; // !cmd -> id
 	str_map raw_cmds; // !rawcmd -> id
 	str_set monitors; // id, id, id
+	str_set raw_monitors; // id, id, id
 	std::map<str, stdiostream_sptr> stdis; // id -> stdiostream*
 	std::map<str, stdiostream_sptr> stdos; // id -> stdiostream*
 	std::vector<std::future<void>> futures;
