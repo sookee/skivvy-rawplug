@@ -22,6 +22,8 @@
 # 
 # '-----------------------------------------------------------------*/
 
+## Message processing
+
 declare -A sk_msg
 
 sk_read_msg()
@@ -34,6 +36,17 @@ sk_read_msg()
 	read sk_msg[text]	
 }
 
+sk_msg_get_nick()
+{
+	echo ${sk_msg[from]%%\!*}
+}
+
+## Initialization functions
+
+sk_initialize() { echo "initialize"; }
+sk_id() { echo "id: $1"; }
+sk_name() { echo "name: $1"; }
+sk_version() { echo "version: $1"; }
 sk_add_command()
 {
 	if [[ $# -eq 2 ]]; then
@@ -43,17 +56,20 @@ sk_add_command()
 		echo "end_command"	
 	fi
 }
-
-## Get nick from msg structure
-sk_msg_get_nick()
+sk_add_raw_command()
 {
-	echo ${sk_msg[from]%%\!*}
+	if [[ $# -eq 2 ]]; then
+		echo "add_raw_command"
+		echo "$1"
+		echo "$2"
+		echo "end_command"	
+	fi
 }
+sk_add_monitor() { echo "add_monitor"; }
+sk_add_raw_monitor() { echo "add_raw_monitor"; }
+sk_end_initialize() { echo "end_initialize"; }
 
-sk_end_initialize()
-{
-	echo "end_initialize"
-}
+## Utility functions
 
 sk_say()
 {
@@ -78,28 +94,20 @@ log()
 	echo "$(date +%Y%m%d-%H%M%S): $1" >> $LOG_FILE
 }
 
+sk_initialize
+sk_id "rawplug-sdcv"
+sk_name "sdcv interface."
+sk_version "0.01"
+sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
+sk_add_command "!php" "PHP function reference [abbreviated]"
+sk_add_command "!calc" "Calculator"
+sk_add_command "!raw" "Rawplug Test Function"
+sk_end_initialize
+
 while read line
 do
-	log $line
-	
 	case $line in
 	
-		'initialize')
-			sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
-			sk_add_command "!php" "PHP function reference [abbreviated]"
-			sk_add_command "!calc" "Calculator"
-			sk_add_command "!raw" "Rawplug Test Function"
-			sk_end_initialize
-		;;
-		'get_id')
-			echo "rawplug-sdcv"
-		;;
-		'get_name')
-			echo "sdcv interface."
-		;;
-		'get_version')
-			echo "0.01"
-		;;
 		'exit')
 			exit 0
 		;;

@@ -130,6 +130,133 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 	return true;
 }
 
+//bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
+//{
+//	bug_func();
+//	lock_guard lock(mtx);
+//	log("loading exec: " << exec);
+//
+//	pid_t pid;
+//	int pipe_in[2]; /* This is the pipe with wich we write to the child process. */
+//	int pipe_out[2]; /* This is the pipe with wich we read from the child process. */
+//
+//	if(pipe(pipe_in) || pipe(pipe_out))
+//		return log_report(strerror(errno));
+//
+//	/* Attempt to fork and check for errors */
+//	if((pid = fork()) == -1)
+//		return log_report(strerror(errno));
+//
+//	if(pid)
+//	{
+//		stdiostream_sptr stdip(new stdiostream(pipe_out[0], std::ios::in));
+//		stdiostream_sptr stdop(new stdiostream(pipe_in[1], std::ios::out));
+//
+//		close(pipe_out[1]);
+//		close(pipe_in[0]);
+//
+//		if(!stdip.get())
+//			return log_report(("Unable to create stdiostream object."));
+//		if(!stdop.get())
+//			return log_report(("Unable to create stdiostream object."));
+//
+//		stdiostream& stdi = *stdip.get();
+//		stdiostream& stdo = *stdop.get();
+//
+//		str line, id, name, version;
+//
+//		// initialize
+//		stdo << "get_id" << std::endl;
+//		if(!sgl(stdi, id) || id.empty())
+//			return log_report("Error, expected plugin id, got: " + id);
+//
+//		stdo << "get_name" << std::endl;
+//		if(!sgl(stdi, name) || name.empty())
+//			return log_report("Error, expected plugin name, got: " + name);
+//
+//		stdo << "get_version" << std::endl;
+//		if(!sgl(stdi, version) || version.empty())
+//			return log_report("Error, expected plugin version, got: " + line);
+//
+//		names[id] = name;
+//		versions[id] = version;
+//
+//		stdo << "initialize" << std::endl;
+//		while(sgl(stdi, line) && line != "end_initialize")
+//		{
+//			bool raw_cmd = false;
+//			bool raw_mon = false;
+//			if(line == "add_command" || (raw_cmd = (line == "add_raw_command")))
+//			{
+//				str cmd;
+//				if(!sgl(stdi, line) || line.empty() || line[0] != '!')
+//					return log_report("Error, expected command name, got: " + line);
+//
+//				cmd = line;
+//				str sep, help;
+//				while(sgl(stdi, line) && line != "end_command")
+//				{
+//					help += sep + line;
+//					sep = '\n';
+//				}
+//				if(raw_cmd)
+//				{
+//					cmds.erase(id);
+//					raw_cmds[cmd] = id;
+//				}
+//				else
+//				{
+//					raw_cmds.erase(id);
+//					cmds[cmd] = id;
+//				}
+//
+//				add
+//				({
+//					cmd, help, [&](const message& msg){ this->exec(msg); }
+//				});
+//			}
+//			else if(line == "add_monitor" || (raw_mon = (line == "add_raw_command")))
+//			{
+//				// Ensure only rw_monitors or monitors but not both
+//				bot.add_monitor(*this);
+//				if(raw_mon)
+//				{
+//					monitors.erase(id);
+//					raw_monitors.insert(id);
+//				}
+//				else
+//				{
+//					raw_monitors.erase(id);
+//					monitors.insert(id);
+//				}
+//			}
+//		}
+//		stdis[id] = stdip;
+//		stdos[id] = stdop;
+//		futures.push_back(std::async(std::launch::async, [=]{ responder(id); }));
+//	}
+//	else
+//	{
+//		/* The child has the zero pid returned by fork*/
+//		close(1);
+//		dup(pipe_out[1]); /* dup uses the lowest numbered unused file descriptor as new descriptor. In our case this now is 1. */
+//
+//		close(0); /* dup uses the lowest numbered unused file descriptor as new descriptor. In our case this now is 0. */
+//		dup(pipe_in[0]);
+//
+//		close(pipe_out[0]);
+//		close(pipe_out[1]);
+//		close(pipe_in[0]);
+//		close(pipe_in[1]);
+//
+//		str plugin_name = dir + "/" + exec;
+//		execl(plugin_name.c_str(), plugin_name.c_str(), (char*)0);
+//		return false; /* Only reached if execl() failed */
+//	}
+//
+//	return true;
+//}
+
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 {
 	bug_func();
@@ -166,22 +293,13 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		str line, id, name, version;
 
 		// initialize
-		stdo << "get_id" << std::endl;
-		if(!sgl(stdi, id) || id.empty())
-			return log_report("Error, expected plugin id, got: " + id);
 
-		stdo << "get_name" << std::endl;
-		if(!sgl(stdi, name) || name.empty())
-			return log_report("Error, expected plugin name, got: " + name);
-
-		stdo << "get_version" << std::endl;
-		if(!sgl(stdi, version) || version.empty())
-			return log_report("Error, expected plugin version, got: " + line);
+		if(!(stdi >> line >> id >> name >> version) || line != "initialize")
+			return log_report("plugin gavebad header info.");
 
 		names[id] = name;
 		versions[id] = version;
 
-		stdo << "initialize" << std::endl;
 		while(sgl(stdi, line) && line != "end_initialize")
 		{
 			bool raw_cmd = false;
