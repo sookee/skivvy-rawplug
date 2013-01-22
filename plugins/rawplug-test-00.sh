@@ -23,14 +23,20 @@
 # '-----------------------------------------------------------------*/
 
 LOG_FILE="$HOME/tmp/rawplug.log"
+CPPFLUSH="$HOME/bin/cppflush"
+
+log()
+{
+	echo "$(date +%Y%m%d-%H%M%S): $1" | $CPPFLUSH >> $LOG_FILE
+}
 
 while read line
 do
-	echo "$(date +%Y%m%d-%H%M%S): $line" >> $LOG_FILE
+	log $line
 	
 	case $line in
 	
-		initialize)
+		'initialize')
 			echo "add_command" # Receive parsed IRC message
 			echo "!cmd1"
 			echo "Ecample command 1"
@@ -41,28 +47,35 @@ do
 			echo "Ecample command 2"
 			echo "Does example 2 type things"
 			echo "end_command"
-			echo "add_monitor" # Only if you want to receive all channel messages
+			#echo "add_monitor" # Only if you want to receive all channel messages
 			echo "end_initialize"
 		;;
-		get_id)
+		'get_id')
 			echo "rawplug"
 		;;
-		get_name)
+		'get_name')
 			echo "A Rawplug Test Script 00"
 		;;
-		get_version)
+		'get_version')
 			echo "0.00"
 		;;
-		exit)
+		'exit')
 			exit 0
 		;;
-		!cmd1)
+		'!cmd1')
 			read msg_line
 			read msg_from
 			read msg_cmd
 			read msg_params
 			read msg_to
 			read msg_text
+			log "!cmd1)"
+			log "msg_line   $msg_line"
+			log "msg_from   $msg_from"
+			log "msg_cmd    $msg_cmd"
+			log "msg_params $msg_params"
+			log "msg_to     $msg_to"
+			log "msg_text   $msg_text"
 			# mgs examples
 			# msg_line   :SooKee!~SooKee@SooKee.users.quakenet.org PRIVMSG #skivvy :!oafind all
 			# msg_from   SooKee!~SooKee@SooKee.users.quakenet.org
@@ -71,25 +84,25 @@ do
 			# msg_to     #skivvy
 			# msg_text   !oafind all
 		
-			echo "/say: $msg_to rawplug is working!!"
+			echo "/say $msg_to rawplug is working!!"
 		;;
-		!cmd2)
+		'!cmd2')
 			read msg_line
 			# msg_line examples
 			# :Skivvy!~Skivvy@Skivvy.users.quakenet.org JOIN #openarenahelp
 			# :Zimmermint!~Zimmy@5ac0ceb1.bb.sky.com PRIVMSG #skivvy-admin :Hello all
 			# :Q!TheQBot@CServe.quakenet.org MODE #omfg +v satyamash
 			# :Skivvy!~Skivvy@Skivvy.users.quakenet.org QUIT :Signed off
-			echo "/say: $msg_to rawplug is working!!"
+			echo "/say #skivvy rawplug is working!!"
 		;;
-		event)
+		'event')
 			# If add_moniter was done unknown lines are raw monitor data else errors
 			read msg
 			#echo "monitor: $msg"	
 		;;
 		*)
 			# errors
-			echo "error: unknown command: $line"	
+			log "error: unknown command: $line"	
 		;;
 	esac
 done

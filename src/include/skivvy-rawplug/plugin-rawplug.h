@@ -89,61 +89,16 @@ public:
 	, buf(fd, mode)
 	{
 	}
+
+	void close()
+	{
+		::close(buf.fd()); // interrupt blocking?
+	}
 };
 
 typedef basic_stdiostream<char> stdiostream;
 typedef basic_stdiostream<wchar_t> wstdiostream;
 
-
-//class child_io
-//{
-//private:
-//	stdiostream* i;
-//	stdiostream* o;
-//
-//	std::ios::iostate state;
-//
-//public:
-//	child_io(int ip, int op)
-//	: i(new stdiostream(ip, std::ios::in))
-//	, o(new stdiostream(op, std::ios::out))
-//	{
-//	}
-//
-//	operator void*()
-//	{
-//		if((state & std::ios::failbit) | (state & std::ios::badbit))
-//			return 0;
-//		return this;
-//	}
-//
-//	child_io& operator<<(const str& s)
-//	{
-//		if(o)
-//			*o << s;
-//		else
-//			state |= std::ios::badbit;
-//		return *this;
-//	}
-//
-//	child_io& operator>>(str& s)
-//	{
-//		if(i)
-//			*i >> s;
-//		else
-//			state |= std::ios::badbit;
-//		return *this;
-//	}
-//
-//	child_io& getline(str& s, char delim = '\n')
-//	{
-//		if(i)
-//			sgl(*i, s, delim);
-//		else
-//			state |= std::ios::badbit;
-//		return *this;
-//	}
-//};
 
 /**
  * PROPERTIES: (Accesed by: bot.props["property"])
@@ -163,11 +118,13 @@ private:
 
 	std::mutex mtx;
 
+	typedef std::shared_ptr<stdiostream> stdiostream_sptr;
+
 	str_map cmds; // !cmd -> id
 	str_map raw_cmds; // !rawcmd -> id
 	str_set monitors; // id, id, id
-	std::map<str, stdiostream*> stdis; // id -> stdiostream*
-	std::map<str, stdiostream*> stdos; // id -> stdiostream*
+	std::map<str, stdiostream_sptr> stdis; // id -> stdiostream*
+	std::map<str, stdiostream_sptr> stdos; // id -> stdiostream*
 	std::vector<std::future<void>> futures;
 
 	str_map names; // id -> name

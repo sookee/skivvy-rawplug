@@ -76,7 +76,7 @@ RawplugIrcBotPlugin::~RawplugIrcBotPlugin() {}
 
 bool RawplugIrcBotPlugin::responder(const str& id)
 {
-	if(!stdis[id])
+	if(!stdis[id].get())
 		return log_report("Bad plugin: " + id);
 	str line;
 	while(!done)
@@ -104,12 +104,20 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 	str_map::iterator it;
 	if((it = cmds.find(msg.get_user_cmd())) != cmds.end())
 		id = it->second;
-	else if((it = raw_cmds.find(msg.get_user_cmd())) != cmds.end() && (raw = true))
+	else if((it = raw_cmds.find(msg.get_user_cmd())) != raw_cmds.end() && (raw = true))
 		id = it->second;
 	else
 		return log_report("Unknown command: " + msg.line);
 
-	if(!stdos[id])
+	bug_var(raw);
+
+//	std::map<str, stdiostream_sptr>::iterator stdit;
+//	if((stdit = stdos.find(id)) == stdos.end())
+//		return log_report("No communication wth this plugin: ");
+//
+//	std::ostream& stdo = *stdit->second;
+
+	if(!stdos[id].get())
 		return log_report("No communication wth this plugin: ");
 
 	std::ostream& stdo = *stdos[id];
@@ -147,32 +155,27 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 
 	if(pid)
 	{
-		stdiostream* stdip = new stdiostream(pipe_out[0], std::ios::in);
-		stdiostream* stdop = new stdiostream(pipe_in[1], std::ios::out);
+		stdiostream_sptr stdip(new stdiostream(pipe_out[0], std::ios::in));
+		stdiostream_sptr stdop(new stdiostream(pipe_in[1], std::ios::out));
+
 		close(pipe_out[1]);
 		close(pipe_in[0]);
 
-		if(!stdip)
+		if(!stdip.get())
 			return log_report(("Unable to create stdiostream object."));
-		if(!stdop)
+		if(!stdop.get())
 			return log_report(("Unable to create stdiostream object."));
 
-		stdiostream& stdi = *stdip;
-		stdiostream& stdo = *stdop;
+		stdiostream& stdi = *stdip.get();
+		stdiostream& stdo = *stdop.get();
 
 		str line, id, name, version;
 
 		// initialize
-		bug_var(stdi);
-		bug_var(stdo);
 		stdo << "get_id" << std::endl;
-		bug_var(stdi);
-		bug_var(stdo);
 		if(!sgl(stdi, id) || id.empty())
 			return log_report("Error, expected plugin id, got: " + id);
-		bug_var(stdi);
-		bug_var(stdo);
-		bug_var(id);
+
 		stdo << "get_name" << std::endl;
 		if(!sgl(stdi, name) || name.empty())
 			return log_report("Error, expected plugin name, got: " + name);
@@ -187,7 +190,8 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		stdo << "initialize" << std::endl;
 		while(sgl(stdi, line) && line != "end_initialize")
 		{
-			if(line == "add_command" || line == "add_raw_command")
+			bool raw = false;
+			if(line == "add_command" || (raw = (line == "add_raw_command")))
 			{
 				str cmd;
 				if(!sgl(stdi, line) || line.empty() || line[0] != '!')
@@ -200,10 +204,10 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 					help += sep + line;
 					sep = '\n';
 				}
-				if(line == "add_command)")
-					cmds[cmd] = id;
-				else
+				if(raw)
 					raw_cmds[cmd] = id;
+				else
+					cmds[cmd] = id;
 
 				add
 				({
@@ -224,10 +228,10 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	{
 		/* The child has the zero pid returned by fork*/
 		close(1);
-		dup (pipe_out[1]); /* dup uses the lowest numbered unused file descriptor as new descriptor. In our case this now is 1. */
+		dup(pipe_out[1]); /* dup uses the lowest numbered unused file descriptor as new descriptor. In our case this now is 1. */
 
 		close(0); /* dup uses the lowest numbered unused file descriptor as new descriptor. In our case this now is 0. */
-		dup (pipe_in[0]);
+		dup(pipe_in[0]);
 
 		close(pipe_out[0]);
 		close(pipe_out[1]);
@@ -279,11 +283,16 @@ void RawplugIrcBotPlugin::exit()
 {
 	done = true;
 
-	for(std::pair<const str, stdiostream*>& p: stdis)
-		delete p.second;
+	for(std::future<void>& fut: futures)
+		if(fut.valid())
+			if(fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
+				fut.get();
 
-	for(std::pair<const str, stdiostream*>& p: stdos)
-		delete p.second;
+	for(std::pair<const str, stdiostream_sptr>& p: stdis)
+		p.second->close();
+
+	for(std::pair<const str, stdiostream_sptr>& p: stdos)
+		p.second->close();
 
 	for(std::future<void>& fut: futures)
 		if(fut.valid())
