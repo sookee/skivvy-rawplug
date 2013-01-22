@@ -295,6 +295,11 @@ void RawplugIrcBotPlugin::exit()
 {
 	done = true;
 
+	// Try clean exit
+	for(std::pair<const str, stdiostream_sptr>& p: stdos)
+		if(p.second.get())
+			*p.second << "exit" << std::endl;
+
 	for(std::future<void>& fut: futures)
 		if(fut.valid())
 			if(fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)

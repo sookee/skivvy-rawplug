@@ -22,7 +22,6 @@
 # 
 # '-----------------------------------------------------------------*/
 
-
 declare -A sk_msg
 
 sk_read_msg()
@@ -66,12 +65,8 @@ sk_say()
 sk_reply()
 {
 	if [[ ${sk_msg[to]:0:1} == '#' ]]; then
-		# echo "/say ${sk_msg[to]} $*."
 		sk_say ${sk_msg[to]} "$*"
 	else
-		# from.substr(0, from.find("!")); // ${from%\!*}
-		# echo "/say ${sk_msg[from]%%\!*} $*."
-		# echo "/say $(sk_msg_get_nick) $*."
 		sk_say $(sk_msg_get_nick) "$*"
 	fi
 }
@@ -118,9 +113,9 @@ do
 			text=$(echo $text|cut -d "." -f 1)
 			
 			if [[ ${text:1:${#word}} == $word ]]; then
-				echo "/say ${sk_msg[to]} $text."
+				sk_reply "$text."
 			else
-				echo "/say ${sk_msg[to]} word: \"$word\" not found."
+				sk_reply "word: \"$word\" not found."
 			fi
 		;;
 		'!php')
@@ -132,16 +127,13 @@ do
 			text=$(echo $text|cut -d "." -f 1)
 			
 			if [[ ${text:1:${#word}} == $word ]]; then
-				echo "/say ${sk_msg[to]} $text."
+				sk_reply "$text."
 			else
-				echo "/say ${sk_msg[to]} word: \"$word\" not found."
+				sk_reply "function: \"$word\" not found."
 			fi
 		;;
 		'!calc')
 			sk_read_msg
-			# ${g//\*/\\*}
-			#math=$(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
-			#math=$(echo "$math"|bc)
 			sk_reply "=" $(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
 		;;
 		'!raw')
