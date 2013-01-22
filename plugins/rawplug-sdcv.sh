@@ -35,9 +35,44 @@ sk_read_msg()
 	read sk_msg[text]	
 }
 
+sk_add_command()
+{
+	if [[ $# -eq 2 ]]; then
+		echo "add_command"
+		echo "$1"
+		echo "$2"
+		echo "end_command"	
+	fi
+}
+
+sk_msg_get_nick()
+{
+	echo ${sk_msg[from]%%\!*}
+}
+
+sk_end_initialize()
+{
+	echo "end_initialize"
+}
+
 sk_say()
 {
-	echo "/say ${sk_msg[to]} $*."
+	who=$1
+	shift
+	echo "/say $who $*"
+}
+
+sk_reply()
+{
+	if [[ ${sk_msg[to]:0:1} == '#' ]]; then
+		# echo "/say ${sk_msg[to]} $*."
+		sk_say ${sk_msg[to]} "$*."
+	else
+		# from.substr(0, from.find("!")); // ${from%\!*}
+		# echo "/say ${sk_msg[from]%%\!*} $*."
+		# echo "/say $(sk_msg_get_nick) $*."
+		sk_say $(sk_msg_get_nick) "$*."
+	fi
 }
 
 LOG_FILE="$HOME/tmp/rawplug.log"
@@ -55,15 +90,10 @@ do
 	case $line in
 	
 		'initialize')
-			echo "add_command" # Receive parsed IRC message
-			echo "!brit"
-			echo "Britanica Concise Info [abbreviated]"
-			echo "end_command"
-			echo "add_command" # Receive parsed IRC message
-			echo "!php"
-			echo "PHP function reference [abbreviated]"
-			echo "end_command"
-			echo "end_initialize"
+			sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
+			sk_add_command "!php" "PHP function reference [abbreviated]"
+			sk_add_command "!raw" "Rawplug Test Function"
+			sk_end_initialize
 		;;
 		'get_id')
 			echo "rawplug-sdcv"
@@ -104,6 +134,10 @@ do
 			else
 				echo "/say ${sk_msg[to]} word: \"$word\" not found."
 			fi
+		;;
+		'!raw')
+			sk_read_msg
+			sk_reply "Do I reply to the right place?"
 		;;
 		*)
 			# errors
