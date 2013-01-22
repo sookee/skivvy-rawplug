@@ -94,10 +94,25 @@ log()
 	echo "$(date +%Y%m%d-%H%M%S): $1" >> $LOG_FILE
 }
 
+trim()
+{
+	# Determine if 'extglob' is currently on.
+	local extglobWasOff=1
+	shopt extglob >/dev/null && extglobWasOff=0 
+	(( extglobWasOff )) && shopt -s extglob # Turn 'extglob' on, if currently turned off.
+	# Trim leading and trailing whitespace
+	local var=$1
+	var=${var##+([[:space:]])}
+	var=${var%%+([[:space:]])}
+	(( extglobWasOff )) && shopt -u extglob # If 'extglob' was off before, turn it back off.
+	echo -n "$var"  # Output trimmed string.
+}
+
 sk_initialize
 sk_id "rawplug-sdcv"
 sk_name "sdcv interface."
 sk_version "0.01"
+sk_add_command "!ox" "Oxford Adv. Learners Dict. [abbreviated]"
 sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 sk_add_command "!php" "PHP function reference [abbreviated]"
 sk_add_command "!calc" "Calculator"
@@ -110,6 +125,39 @@ do
 	
 		'exit')
 			exit 0
+		;;
+		'!ox')
+			sk_read_msg
+			# !ox   tart  [2] \!ox\s+\w+(?:\s+\d+)?
+			# !ox "tart bart" [2] \!ox\s+"[^"]*?"(\s+\d+)?
+			
+			if [[ $(echo "${sk_msg[text]}"|grep -P -o '\!ox\s+\w+(\s+\d+)?') ]]; then
+				word=$(echo $(trim $(echo "${sk_msg[text]}"|cut -d ' ' -f 2-))|cut -d ' ' -f 1)
+				num=$(echo "${sk_msg[text]}"|grep -P -o '\d+')
+				echo word: $word
+				echo num : $num
+			elif [[ $(echo "${sk_msg[text]}"|grep -P -o '\!ox\s+"[^"]*?"(\s+\d+)?') ]]; then
+				word=$(echo "${sk_msg[text]}"|grep -P -o '"[^"]*"'|grep -P -o '[^"]+')
+				num=$(echo "${sk_msg[text]}"|grep -P -o '\d+')
+				echo word: $word
+				echo num : $num
+			else
+				echo bad
+			fi
+			
+			if [[ -z $num ]]; then num=1; fi
+			((num2 = num + 1))
+			#echo  num: $num
+			#echo num2: $num2
+			text=$(sdcv -u "Oxford Advanced Learner's Dictionary" -n "$word")
+			#echo text: $text
+			text=${text//\*/\\*}
+			#echo text: $text
+			text=$(echo $text|cut -d "-" -f 5-)
+			#echo text: $text
+			text=$(echo $text|cut -d "$num" -f 2-|cut -d "$num2" -f 1)
+			#echo text: $text
+			sk_reply $num $text
 		;;
 		'!brit')
 			sk_read_msg
