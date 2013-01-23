@@ -257,6 +257,26 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 //	return true;
 //}
 
+bool RawplugIrcBotPlugin::poll()
+{
+	while(!done)
+	{
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		siz now = std::time(0);
+		for(str_siz_pair& p: pollnows)
+		{
+			if(!pollsecs[p.first])
+				continue;
+			if(pollnows[p.first] - now > pollsecs[p.first])
+			{
+				if(stdos[p.first])
+					*stdos[p.first] << "poll" << std::endl;
+				pollnows[p.first] = now;
+			}
+		}
+	}
+}
+
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 {
 	bug_func();
@@ -356,6 +376,16 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 					raw_monitors.erase(id);
 					monitors.insert(id);
 				}
+			}
+			else if(!line.find("poll_me"))
+			{
+				// Ensure only rw_monitors or monitors but not both
+				siz secs;
+				if(!(siss(line) >> line >> secs))
+					secs = 5 * 60; // five minuted default
+				lock_guard lock(pol_mtx);
+				pollsecs[id] = secs;
+				pollnows[id] = 0; // time oflast poll
 			}
 		}
 		stdis[id] = stdip;

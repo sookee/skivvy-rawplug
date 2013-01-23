@@ -131,6 +131,11 @@ private:
 	str_map names; // id -> name
 	str_map versions; // id -> version
 
+	std::mutex poll_mtx;
+	str_siz_map pollsecs; // id -> poll-time_secs
+	str_siz_map pollnows; // id -> time of last poll
+	bool poll();
+
 	bool done = false;
 	bool responder(const str& id);
 	bool exec(const message& msg);
