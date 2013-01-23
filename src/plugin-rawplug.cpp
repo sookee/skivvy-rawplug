@@ -288,14 +288,23 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 			return log_report(("Unable to create stdiostream object."));
 
 		stdiostream& stdi = *stdip.get();
-		stdiostream& stdo = *stdop.get();
+		//stdiostream& stdo = *stdop.get();
 
 		str line, id, name, version;
 
 		// initialize
 
-		if(!(stdi >> line >> id >> name >> version) || line != "initialize")
-			return log_report("plugin gavebad header info.");
+		if(!sgl(stdi, line) || line != "initialize")
+			return log_report("Expected 'initialize' from plugin, got: " + line);
+
+		if(!(stdi >> line >> id >> std::ws) || line != "id:")
+			return log_report("Expected id: from plugin, got: " + line);
+
+		if(!(stdi >> line >> name >> std::ws) || line != "name:")
+			return log_report("Expected name: from plugin, got: " + line);
+
+		if(!(stdi >> line >> version >> std::ws) || line != "version:")
+			return log_report("Expected version: from plugin, got: " + line);
 
 		names[id] = name;
 		versions[id] = version;
