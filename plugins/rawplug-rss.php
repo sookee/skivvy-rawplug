@@ -9,6 +9,7 @@ $sk_msg = array();
 
 function sk_read_msg()
 {
+	global $sk_msg;
 	$sk_msg['line'] = fgets($stdi);
 	$sk_msg['from'] = fgets($stdi);
 	$sk_msg['cmd'] = fgets($stdi);
@@ -19,6 +20,7 @@ function sk_read_msg()
 
 function sk_msg_get_nick()
 {
+	global $sk_msg;
 	$bits = preg_split('!', $sk_msg['from']);
 	return $bits[0];
 }
@@ -63,6 +65,7 @@ function make_tiny_url($url)
 
 function rss_add($chan, $name, $url)
 {
+	global $rss_chanfeeds;
 	if(($url = make_tiny_url($url)))
 	{
 		$rss_chanfeeds[$chan][$name] = array();
@@ -76,6 +79,7 @@ function rss_add($chan, $name, $url)
 			
 function rss_check()
 {
+	global $rss_chanfeeds;
 	foreach($rss_chanfeeds as $chan => $rss_feeds)
 	{
 		foreach($rss_feeds as $name => $rss_feed)
@@ -103,8 +107,8 @@ function rss_check()
 }		
 
 sk_initialize();
-sk_id("rawplug-sdcv");
-sk_name("sdcv interface.");
+sk_id("rawplug-rss");
+sk_name("RSS Feed Updates.");
 sk_version("0.01");
 sk_add_command("!rss" "!rss add|del <name> <url>");
 sk_poll_me(10); // receive poll every 10 minutes
