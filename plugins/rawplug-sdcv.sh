@@ -67,7 +67,7 @@ sk_add_raw_command()
 }
 sk_add_monitor() { echo "add_monitor"; }
 sk_add_raw_monitor() { echo "add_raw_monitor"; }
-sk_poll_me() { echo "poll_me $1"; } # request poll every $1 seconds
+sk_poll_me() { echo "poll_me: $1"; } # request poll every $1 seconds
 sk_end_initialize() { echo "end_initialize"; }
 
 ## Utility functions
@@ -118,13 +118,16 @@ sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 sk_add_command "!php" "PHP function reference [abbreviated]"
 sk_add_command "!calc" "Calculator"
 sk_add_command "!raw" "Rawplug Test Function"
-#sk_poll_me 5
+sk_poll_me 5
 sk_end_initialize
 
 while read line
 do
 	case $line in
-	
+		
+		'poll')
+			sk_say '#skivvy' 'poll'
+		;;
 		'exit')
 			exit 0
 		;;

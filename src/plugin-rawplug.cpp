@@ -262,19 +262,25 @@ bool RawplugIrcBotPlugin::poll()
 	while(!done)
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
+		lock_guard lock(poll_mtx);
 		siz now = std::time(0);
+		//bug_var(now);
 		for(str_siz_pair& p: pollnows)
 		{
+			//bug_var(p.first);
 			if(!pollsecs[p.first])
 				continue;
-			if(pollnows[p.first] - now > pollsecs[p.first])
-			{
-				if(stdos[p.first])
-					*stdos[p.first] << "poll" << std::endl;
-				pollnows[p.first] = now;
-			}
+			//bug_var(pollnows[p.first]);
+			if(now - pollnows[p.first] < pollsecs[p.first])
+				continue;
+			//bug_var(stdos[p.first]);
+			if(!stdos[p.first])
+				continue;
+			*stdos[p.first] << "poll" << std::endl;
+			pollnows[p.first] = now;
 		}
 	}
+	return true;
 }
 
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
@@ -310,27 +316,35 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		stdiostream& stdi = *stdip.get();
 		//stdiostream& stdo = *stdop.get();
 
-		str line, id, name, version;
+		str skip, line, id, name, version;
 
 		// initialize
 
 		if(!sgl(stdi, line) || line != "initialize")
 			return log_report("Expected 'initialize' from plugin, got: " + line);
+		bug_var(line);
 
-		if(!(stdi >> line >> id >> std::ws) || line != "id:")
+		if(!sgl(stdi, line) || line.find("id:"))
 			return log_report("Expected id: from plugin, got: " + line);
+		sgl(sgl(siss(line), skip, ':') >> std::ws, id);
+		bug_var(line);
 
-		if(!(stdi >> line >> name >> std::ws) || line != "name:")
+		if(!sgl(stdi, line) || line.find("name:"))
 			return log_report("Expected name: from plugin, got: " + line);
+		sgl(sgl(siss(line), skip, ':') >> std::ws, name);
+		bug_var(line);
 
-		if(!(stdi >> line >> version >> std::ws) || line != "version:")
+		if(!sgl(stdi, line) || line.find("version:"))
 			return log_report("Expected version: from plugin, got: " + line);
+		sgl(sgl(siss(line), skip, ':') >> std::ws, version);
+		bug_var(line);
 
 		names[id] = name;
 		versions[id] = version;
 
 		while(sgl(stdi, line) && line != "end_initialize")
 		{
+			bug_var(line);
 			bool raw_cmd = false;
 			bool raw_mon = false;
 			if(line == "add_command" || (raw_cmd = (line == "add_raw_command")))
@@ -377,15 +391,16 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 					monitors.insert(id);
 				}
 			}
-			else if(!line.find("poll_me"))
+			else if(!line.find("poll_me:"))
 			{
 				// Ensure only rw_monitors or monitors but not both
 				siz secs;
 				if(!(siss(line) >> line >> secs))
 					secs = 5 * 60; // five minuted default
-				lock_guard lock(pol_mtx);
+				bug_var(secs);
+				lock_guard lock(poll_mtx);
 				pollsecs[id] = secs;
-				pollnows[id] = 0; // time oflast poll
+				pollnows[id] = 0; // time off last poll
 			}
 		}
 		stdis[id] = stdip;
@@ -439,6 +454,8 @@ bool RawplugIrcBotPlugin::initialize()
 			}
 		}
 	}
+	poll_fut = std::async(std::launch::async, [this]{ poll(); });
+
 	return true;
 }
 
@@ -472,6 +489,9 @@ void RawplugIrcBotPlugin::exit()
 		if(fut.valid())
 			if(fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
 				fut.get();
+	if(poll_fut.valid())
+		if(poll_fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
+			poll_fut.get();
 }
 
 // INTERFACE: IrcBotMonitor
