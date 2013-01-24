@@ -37,6 +37,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <mutex>
 #include <cstdio>
 #include <cstdlib>
+#include <utility>
 
 #include <ext/stdio_filebuf.h>
 
@@ -132,12 +133,14 @@ private:
 	str_map versions; // id -> version
 
 	typedef std::map<str, st_time_point> str_time_point_map;
-	typedef std::map<str, st_period> str_period_map;
+	typedef std::pair<const str, st_time_point> str_time_point_pair;
+	typedef std::map<str, std::chrono::seconds> str_sec_map;
+	typedef std::pair<const str, std::chrono::seconds> str_sec_pair;
 
 	std::mutex poll_mtx;
 	std::future<void> poll_fut;
-	str_siz_map pollsecs; // id -> poll-time_secs
-	str_siz_map pollnows; // id -> time of last poll
+	str_sec_map pollsecs; // id -> poll-time_secs
+	str_time_point_map pollnows; // id -> time of last poll
 	bool poll();
 
 	bool done = false;

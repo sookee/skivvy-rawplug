@@ -87,8 +87,16 @@ bool RawplugIrcBotPlugin::responder(const str& id)
 				return log_report("Error reading rawplug: " + id);
 		}
 		bug_var(line);
-		soss oss;
-		bot.exec(line, &oss);
+		if(!line.find("/log"))
+		{
+			line = line.substr(4);
+			log(trim(line));
+		}
+		else
+		{
+			soss oss;
+			bot.exec(line, &oss);
+		}
 	}
 	return true;
 }
@@ -263,12 +271,13 @@ bool RawplugIrcBotPlugin::poll()
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		lock_guard lock(poll_mtx);
-		siz now = std::time(0);
+//		siz now = std::time(0);
+		st_time_point now = st_clk::now(); //std::time(0);
 		//bug_var(now);
-		for(str_siz_pair& p: pollnows)
+		for(str_time_point_pair& p: pollnows)
 		{
 			//bug_var(p.first);
-			if(!pollsecs[p.first])
+			if(pollsecs[p.first] == std::chrono::seconds(0))
 				continue;
 			//bug_var(pollnows[p.first]);
 			if(now - pollnows[p.first] < pollsecs[p.first])
@@ -399,8 +408,8 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 					secs = 5 * 60; // five minuted default
 				bug_var(secs);
 				lock_guard lock(poll_mtx);
-				pollsecs[id] = secs;
-				pollnows[id] = 0; // time off last poll
+				pollsecs[id] = std::chrono::seconds(secs);
+				pollnows[id]; //0; // time off last poll
 			}
 		}
 		stdis[id] = stdip;
