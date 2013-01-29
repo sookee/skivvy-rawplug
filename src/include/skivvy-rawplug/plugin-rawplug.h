@@ -48,30 +48,6 @@ using namespace __gnu_cxx;
 typedef stdio_filebuf<char> stdiobuf;
 typedef stdio_filebuf<wchar_t> wstdiobuf;
 
-//template<typename Char>
-//class basic_stdiostream
-//: public virtual std::basic_istream<Char>
-//, public virtual std::basic_ostream<Char>
-//{
-//public:
-//	typedef Char char_type;
-//	typedef std::basic_iostream<char_type> stream_type;
-//	typedef stdio_filebuf<char_type> buf_type;
-//
-//protected:
-//	buf_type ibuf;
-//	buf_type obuf;
-//
-//public:
-////	basic_stdiostream(): stream_type(&buf) {}
-//	basic_stdiostream(int ifd, int ofd)
-//	: std::basic_istream<Char>(&ibuf)
-//	, std::basic_ostream<Char>(&obuf)
-//	, ibuf(ifd, std::ios::in), obuf(ofd, std::ios::out)
-//	{
-//	}
-//};
-
 template<typename Char>
 class basic_stdiostream
 : public std::basic_iostream<Char>

@@ -118,7 +118,7 @@ sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 sk_add_command "!php" "PHP function reference [abbreviated]"
 sk_add_command "!calc" "Calculator"
 sk_add_command "!raw" "Rawplug Test Function"
-//sk_poll_me 60
+#sk_poll_me 60
 sk_end_initialize
 
 while read line
