@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _SKIVVY_IRCBOT_RAWPLUG_H_
-#define _SKIVVY_IRCBOT_RAWPLUG_H_
+#ifndef _SKIVVY_PLUGIN_RAWPLUG_H_
+#define _SKIVVY_PLUGIN_RAWPLUG_H_
 /*
  * plugin-rawplug.h
  *
@@ -41,9 +41,10 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <ext/stdio_filebuf.h>
 
-namespace skivvy { namespace ircbot {
+namespace skivvy { namespace rawplug {
 
 using namespace __gnu_cxx;
+using namespace skivvy::ircbot;
 
 typedef stdio_filebuf<char> stdiobuf;
 typedef stdio_filebuf<wchar_t> wstdiobuf;
@@ -144,6 +145,6 @@ public:
 	virtual void event(const message& msg);
 };
 
-}} // sookee::ircbot
+}} // skivvy::rawplug
 
-#endif // _SKIVVY_IRCBOT_RAWPLUG_H_
+#endif // _SKIVVY_PLUGIN_RAWPLUG_H_

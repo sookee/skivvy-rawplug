@@ -28,7 +28,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 '-----------------------------------------------------------------*/
 
-#include <skivvy-rawplug/plugin-rawplug.h>
+#include <skivvy/plugin-rawplug.h>
 
 #include <ctime>
 #include <cstdlib>
@@ -48,7 +48,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <skivvy/ios.h>
 #include <skivvy/str.h>
 
-namespace skivvy { namespace ircbot {
+namespace skivvy { namespace rawplug {
 
 IRC_BOT_PLUGIN(RawplugIrcBotPlugin);
 PLUGIN_INFO("rawplug", "Raw Plugin Interface", "0.2");
@@ -523,4 +523,4 @@ void RawplugIrcBotPlugin::event(const message& msg)
 		}
 }
 
-}} // sookee::ircbot
+}} // skivvy::rawplug {
