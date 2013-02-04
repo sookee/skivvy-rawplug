@@ -43,7 +43,21 @@ sk_msg_get_nick()
 
 ## Initialization functions
 
+sk_error() { echo "error: $1"; exit 1; }
+
 sk_initialize() { echo "initialize"; }
+sk_initialize_2()
+{
+	if [[ $# -eq 3 ]]; then
+		sk_initialize
+		sk_id "$1"
+		sk_name "$2"
+		sk_version "$3"
+	else
+		sk_error "sk_initialize_2 needs 3 parameters, $# supplied."
+	fi
+}
+
 sk_id() { echo "id: $1"; }
 sk_name() { echo "name: $1"; }
 sk_version() { echo "version: $1"; }
@@ -54,6 +68,8 @@ sk_add_command()
 		echo "$1"
 		echo "$2"
 		echo "end_command"	
+	else
+		sk_error "sk_add_command needs 2 parameters, $# supplied."
 	fi
 }
 sk_add_raw_command()

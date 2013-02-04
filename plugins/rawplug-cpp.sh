@@ -45,12 +45,13 @@ trim()
 	echo -n "$var"  # Output trimmed string.
 }
 
-sk_initialize
-sk_id 'rawplug-cpp'
-sk_name 'C++ Code Runner'
-sk_version '0.01'
+#sk_initialize
+#sk_id 'rawplug-cpp'
+#sk_name 'C++ Code Runner'
+#sk_version '0.01'
+
+sk_initialize_2 'rawplug-cpp' 'C++ Code Runner' '0.01'
 sk_add_command '!cpp' 'Run c++ code.'
-#sk_poll_me 60
 sk_end_initialize
 
 while read line
