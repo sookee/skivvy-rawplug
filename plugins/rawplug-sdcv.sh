@@ -24,69 +24,7 @@
 
 ## Message processing
 
-declare -A sk_msg
-
-sk_read_msg()
-{
-	read sk_msg[line]
-	read sk_msg[from]
-	read sk_msg[cmd]
-	read sk_msg[params]
-	read sk_msg[to]
-	read sk_msg[text]	
-}
-
-sk_msg_get_nick()
-{
-	echo ${sk_msg[from]%%\!*}
-}
-
-## Initialization functions
-
-sk_initialize() { echo "initialize"; }
-sk_id() { echo "id: $1"; }
-sk_name() { echo "name: $1"; }
-sk_version() { echo "version: $1"; }
-sk_add_command()
-{
-	if [[ $# -eq 2 ]]; then
-		echo "add_command"
-		echo "$1"
-		echo "$2"
-		echo "end_command"	
-	fi
-}
-sk_add_raw_command()
-{
-	if [[ $# -eq 2 ]]; then
-		echo "add_raw_command"
-		echo "$1"
-		echo "$2"
-		echo "end_command"	
-	fi
-}
-sk_add_monitor() { echo "add_monitor"; }
-sk_add_raw_monitor() { echo "add_raw_monitor"; }
-sk_poll_me() { echo "poll_me: $1"; } # request poll every $1 seconds
-sk_end_initialize() { echo "end_initialize"; }
-
-## Utility functions
-
-sk_say()
-{
-	who=$1
-	shift
-	echo "/say $who $*"
-}
-
-sk_reply()
-{
-	if [[ ${sk_msg[to]:0:1} == '#' ]]; then
-		sk_say ${sk_msg[to]} "$*"
-	else
-		sk_say $(sk_msg_get_nick) "$*"
-	fi
-}
+source rawplug-api.sh
 
 LOG_FILE="rawplug.log"
 
