@@ -54,8 +54,18 @@ skivvy_plugin_rawplug_la_SOURCES = plugin-rawplug.cpp
 skivvy_plugin_rawplug_la_LDFLAGS = -module -avoid-version
 
 plugin_manuals_DATA = $(top_srcdir)/docs/rawplug-manual.text
+plugin_library_DATA = \
+	$(top_srcdir)/plugins/rawplug-api.sh \
+	$(top_srcdir)/plugins/rawplug-cpp.sh \
+	$(top_srcdir)/plugins/rawplug-cpp-headers.cpp \
+	$(top_srcdir)/plugins/rawplug-sdcv.sh
 
-extra_DIST = $(top_srcdir)/docs/rawplug-manual.text
+extra_DIST = \
+	$(top_srcdir)/docs/rawplug-manual.text \
+	$(top_srcdir)/plugins/rawplug-api.sh \
+	$(top_srcdir)/plugins/rawplug-cpp.sh \
+	$(top_srcdir)/plugins/rawplug-cpp-headers.cpp \
+	$(top_srcdir)/plugins/rawplug-sdcv.sh
 
 install-data-hook: $(plugin_library_LTLIBRARIES)
 	for m in $(plugin_library_LTLIBRARIES); do \
