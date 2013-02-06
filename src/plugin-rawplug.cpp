@@ -110,12 +110,12 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 
 	str id;
 	str_map::iterator it;
-	if((it = cmds.find(msg.get_user_cmd())) != cmds.end())
+	if((it = cmds.find(msg.get_user_cmd_cp())) != cmds.end())
 		id = it->second;
-	else if((it = raw_cmds.find(msg.get_user_cmd())) != raw_cmds.end() && (raw = true))
+	else if((it = raw_cmds.find(msg.get_user_cmd_cp())) != raw_cmds.end() && (raw = true))
 		id = it->second;
 	else
-		return log_report("Unknown command: " + msg.line);
+		return log_report("Unknown command: " + msg.line_cp);
 
 	bug_var(raw);
 
@@ -124,15 +124,15 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 
 	std::ostream& stdo = *stdos[id];
 
-	stdo << msg.get_user_cmd() << std::endl;
-	stdo << msg.line << std::endl;
+	stdo << msg.get_user_cmd_cp() << std::endl;
+	stdo << msg.line_cp << std::endl;
 	if(!raw)
 	{
-		stdo << msg.from << std::endl;
-		stdo << msg.cmd << std::endl;
-		stdo << msg.params << std::endl;
-		stdo << msg.to << std::endl;
-		stdo << msg.text << std::endl;
+		stdo << msg.from_cp << std::endl;
+		stdo << msg.cmd_cp << std::endl;
+		stdo << msg.params_cp << std::endl;
+		stdo << msg.to_cp << std::endl;
+		stdo << msg.text_cp << std::endl;
 	}
 
 	return true;
@@ -407,16 +407,16 @@ void RawplugIrcBotPlugin::event(const message& msg)
 	// distribute to all monitoring plugins
 	for(const str& id: raw_monitors)
 		if(stdos[id])
-			*stdos[id] << "event" << std::endl << msg.line << std::endl;
+			*stdos[id] << "event" << std::endl << msg.line_cp << std::endl;
 
 	for(const str& id: monitors)
 		if(stdos[id])
 		{
-			*stdos[id] << msg.from << std::endl;
-			*stdos[id] << msg.cmd << std::endl;
-			*stdos[id] << msg.params << std::endl;
-			*stdos[id] << msg.to << std::endl;
-			*stdos[id] << msg.text << std::endl;
+			*stdos[id] << msg.from_cp << std::endl;
+			*stdos[id] << msg.cmd_cp << std::endl;
+			*stdos[id] << msg.params_cp << std::endl;
+			*stdos[id] << msg.to_cp << std::endl;
+			*stdos[id] << msg.text_cp << std::endl;
 		}
 }
 
