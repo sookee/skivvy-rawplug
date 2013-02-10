@@ -33,7 +33,7 @@ sk_read_msg()
 	read sk_msg[cmd]
 	read sk_msg[params]
 	read sk_msg[to]
-	read sk_msg[text]	
+	read sk_msg[text]
 }
 
 sk_msg_get_nick()
