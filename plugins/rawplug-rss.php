@@ -1,5 +1,6 @@
 #!/usr/bin/php -q
 <?php
+date_default_timezone_set('UTC');
 $stdi = fopen( 'php://stdin', 'r' );
 
 $sk_msg = array();
@@ -68,12 +69,8 @@ function sk_add_raw_monitor() { echo "add_raw_monitor\n"; }
 function sk_poll_me($secs) { echo  "poll_me: $secs\n"; }
 function sk_end_initialize() { echo "end_initialize\n"; }
 
-$rss_chanfeeds = array();
-
 function make_tiny_url($url)
 {
-	// http://tinyurl.com/create.php?source=indexpage&url=http%3A%2F%2Fwww.wikipedia.org%2F&submit=Make+TinyURL!&alias=
-	// <b>http://tinyurl.com/53kja</b>
 	$url = urlencode($url);
 	$html = file_get_contents('http://tinyurl.com/create.php?source=indexpage&url=' . $url . '&submit=Make+TinyURL!&alias=');
 	if(preg_match('/<b>(http:\/\/tinyurl.com\/[a-zA-Z0-9]+)<\/b>/', $html, $matches))
@@ -81,53 +78,10 @@ function make_tiny_url($url)
 	return false;
 }
 
-// chan.name.url: http://
-// chan.name.pubDate: Mon, 15 Aug 2005 15:52:01 +0000
-// chan.name.active: true
-
 // File Format
 // feed: #chan|name|true|123456789|http://...com
 
 $store_file = $_SERVER['HOME'] . '/.skivvy/rawplug-rss-store-file.txt';
-$store_lock = $_SERVER['HOME'] . '/.skivvy/rawplug-rss-store-lock.txt';
-$store_temp = $_SERVER['HOME'] . '/.skivvy/rawplug-rss-store-temp.txt';
-
-function store_lock()
-{
-	global $store_file;
-	global $store_lock;
-
-	// attempt to lock file
-	$retries = 10;
-	while(--$retries && !rename($store_file, $store_lock))
-		sleep(1);
-
-	if($retries)
-		return true;
-
-	sk_log('Unable to gain file lock on: ' . $store_file);
-	return false;
-}
-
-function store_is_locked()
-{
-	if(!($ifp = fopen($store_lock, 'r')))
-		return false;
-	fclose($ifp);
-	return true;
-}
-
-function store_unlock()
-{
-	global $store_file;
-	global $store_lock;
-
-	if(rename($store_lock, $store_file))
-		return true;
-
-	sk_log('Unable to unlock file: ' . $store_file);
-	return false;
-}
 
 /**
  * Find out if a feed called $qname exists for channel $qchan
@@ -138,19 +92,21 @@ function store_unlock()
  */
 function rss_has($qchan, $qname, &$res)
 {
-	global $store_lock;
-	global $store_temp;
+	global $store_file;
 
-	if(!store_lock())
-		return false;
-
-	if(!($ifp = fopen($store_lock, 'r')))
+	if(!($ifp = fopen($store_file, 'r')))
 	{
-		sk_log('Unable to open input file: ' . $store_lock);
-		store_unlock();
+		sk_log('Unable to open input file: ' . $store_file);
 		return false;
 	}
 	
+	if(!floc($ifp, LOCK_SH))
+	{
+		sk_log('Unable to lock input file: ' . $store_file);
+		fclose($ifp);
+		return false;
+	}
+		
 	$res = false;
 	while(($line = fgets($ifp)))
 	{
@@ -158,34 +114,28 @@ function rss_has($qchan, $qname, &$res)
 		if(strlen($line) == 0)
 			continue;
 
-		//echo "line: $line\n";
 		$temp = preg_split('/:\s+/', $line, 2);
-	//	print_r($temp);
 				
 		if($temp[0] != 'feed')
-		{
-//			fputs($ofp, $line . "\n");
 			continue;
-		}
 
 		$temp = preg_split('/\|/', $temp[1]);
-		$chan = $temp[0];
-		$name = $temp[1];
 		
-		if($chan == $qchan && $name == $qname)
+		if($qchan == $temp[0] && $qname == $temp[1])
 		{
 			$res = true;
-			return store_unlock();
+			break;
 		}
 	}
+	flock($ifp, LOCK_UN);
 	fclose($ifp);
 	
-	return store_unlock();
+	return $res;
 }
 
 function rss_add($chan, $name, $url)
 {
-	global $store_lock;
+	global $store_file;
 	
 	$res = false;
 	if(!rss_has($chan, $name, $res))
@@ -197,73 +147,70 @@ function rss_add($chan, $name, $url)
 		return false;
 	}
 	
-	if(!store_lock())
-		return false;
-	
-	if(!($ofp = fopen($store_lock, 'a')))
+	if(!($ofp = fopen($store_file, 'a')))
 	{
-		sk_log('Unable to open output file: ' . $store_lock);
-		store_unlock();
+		sk_log('Unable to open output file: ' . $store_file);
+		return false;
+	}
+	
+	if(!flock($afp, LOCK_EX))
+	{
+		sk_log('Unable to open obtail lock: ' . $store_file);
+		fclose($ofp);
 		return false;
 	}
 	
 	// feed: #chan|name|true|123456789|http://...com
-	date_default_timezone_set('UTC');
 	$pubDate = new DateTime(date(DATE_RSS));
 	fputs($ofp, 'feed: ' . $chan . '|' . $name . '|' . true . '|' . strval($pubDate->getTimestamp()) . '|' . $url . "\n");
+	flock($ofp, LOCK_UN);
 	fclose($ofp);
-	return store_unlock();
+	
+	return true;
 }
 
 function rss_check()
 {
-	global $store_lock;
-	global $store_temp;
+	global $store_file;
 	
 	sk_log('rss_check()');
-	//echo "rss_check()\n";
-	
-	// attempt to lock file
-	if(!store_lock())
-		return false;
 
-	if(!($ifp = fopen($store_lock, 'r')))
+	if(!($fp = fopen($store_file, 'c+')))
 	{
-		sk_log('Unable to open input file: ' . $store_lock);
-		store_unlock();
-		return false;
-	}
-	if(!($ofp = fopen($store_temp, 'w')))
-	{
-		sk_log('Unable to open output file: ' . $store_temp);
-		store_unlock();
+		sk_log('Unable to open input file: ' . $store_file);
 		return false;
 	}
 	
-	while(($line = fgets($ifp)))
+	if(!flock($fp, LOCK_EX))
 	{
-		//echo "line: $line\n);
+		sk_log('error: failed to lock ' . $store_file);
+		fclose($fp);
+		return false;
+	}
+
+	$store_temp = array();
+	
+	while(($line = fgets($fp)))
+	{
 		$line = trim($line);
-		if(!strlen($line))
+		if(strlen($line) == 0)
 			continue;
 
 		$temp = preg_split('/:\s+/', $line, 2);
-		//print_r($temp);
 		
 		if($temp[0] != 'feed')
 			continue;
 
 		$temp = preg_split('/\|/', $temp[1]);
 		
-		//print_r($temp);
-		
 		$chan = $temp[0];
 		$name = $temp[1];
 		$active = $temp[2];
-		date_default_timezone_set('UTC');
+
 		$lastPubDate = new DateTime();
 		$lastPubDate->setTimestamp($temp[3]);
 		$maxPubDate = $lastPubDate;
+		
 		$url = $temp[4];
 		
 		sk_log("Feed: $name last checked: " . $lastPubDate->format('Y-m-d H:i:s'));
@@ -273,52 +220,47 @@ function rss_check()
 			$xml = file_get_contents($url);
 			$dom = new DomDocument();
 			$dom->loadXML($xml);
+			
 			foreach($dom->getElementsByTagName('item') as $item)
 			{
-				$sxmle = simplexml_import_dom($item);
-				
-				//print_r($sxmle);
-				
+				$sxmle = simplexml_import_dom($item);				
 				$pubDate = new DateTime($sxmle->pubDate);
-// 				sk_log("\tpubDate: " . $pubDate->format('Y-m-d H:i:s'));
 					
-				if($pubDate > $lastPubDate)
-				{
-					sk_log("Make tiny: " . $sxmle->link);
-					$tiny = make_tiny_url($sxmle->link);
-					sk_log("tiny: " . $tiny);
-					if($tiny)
-					{
-						$info = $sxmle->title . " " . $tiny;
-						sk_say($chan, "[$name] $info");
-						if($pubDate > $maxPubDate)
-							$maxPubDate = $pubDate;
-					}
-				}
+				if($pubDate <= $lastPubDate)
+					continue;
+
+				$tiny = make_tiny_url($sxmle->link);
+
+				if(!$tiny)
+					continue;
+
+				sk_say($chan, "[$name] " . $sxmle->title . " " . $tiny);
+				if($pubDate > $maxPubDate)
+					$maxPubDate = $pubDate;
 			}
 		}
 		// feed: #chan|name|true|123456789|http://...com
-		$pubDate = new DateTime();
-		fputs($ofp, 'feed: ' . $chan . '|' . $name . '|' . $active . '|' . strval($maxPubDate->getTimestamp()) . '|' . $url . "\n");
+ 		$pubDate = new DateTime();
+		sk_log('    pubDate: ' . $pubDate->format('Y-m-d H:i:s'));
+ 		sk_log(' maxPubDate: ' . $maxPubDate->format('Y-m-d H:i:s'));
+		sk_log('lastPubDate: ' . $lastPubDate->format('Y-m-d H:i:s'));
+		$store_temp[] = 'feed: ' . $chan . '|' . $name . '|' . $active . '|' . strval($maxPubDate->getTimestamp()) . '|' . $url;
 	}
 	
-	fclose($ifp);
-	fclose($ofp);
-	
-	// update locked file
-	if(rename($store_temp, $store_lock))
-		return store_unlock();
+	ftruncate($fp, 0);
+	foreach ($store_temp as $line)
+		fputs($fp, $line . "\n");
+	flock($fp, LOCK_UN);
+	fclose($fp);
 
-	sk_log('Failed to update locked file: ' . $store_lock);
-	return false;
+	return true;
 }
 
-
-//$tiny = make_tiny_url("http://google.com");
-//print_r($tiny);
-
-//exit(1);
-
+if(!file_exists($store_file))
+{
+	$ofs = fopen($store_file, 'w');
+	fclose($ofs);
+}
 
 sk_initialize();
 sk_id('rawplug-rss');
@@ -327,18 +269,6 @@ sk_version('0.01');
 sk_add_command('!rss', '!rss add|del <name> <url>');
 sk_poll_me(5 * 60); // receive poll every 10 minutes
 sk_end_initialize();
-
-if(store_is_locked())
-{
-	sk_log('Unlocking stare:');
-	store_unlock();
-}
-
-// TESTING
-//sk_read_msg();
-//echo rss_add('#channel', 'name', 'http://live-clan.de/.xml/?type=rss');
-//echo rss_check();
-
 
 sleep(60);
 
@@ -356,8 +286,21 @@ while(($line = fgets($stdi)) != false)
 		break;
 		
 		case '!rss':
+			//!rss add <name> <url>
+			//!rss del <name>
+			//!rss list
 			sk_read_msg();
-		break;
+			
+			$args = preg_split('/\s+/', $sk_msg['text']);
+			if(count($args) == 2 && $args[1] == 'list')
+				do_list($chan);
+			else if(count($args) == 3 && $args[1] == 'del')
+				so_del($chan, $args[2]);
+			else if(count($args) == 4 && $args[1] == 'add')
+				so_add($chan, $args[2], $args[3]);
+			else
+				sk_reply("usage: !rss (list | sub <name> | add <name> <url>)");
+			break;
 
 		default:
 			echo "/nop\n";
