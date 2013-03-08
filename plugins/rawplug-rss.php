@@ -76,8 +76,8 @@ function make_tiny_url($url)
 	// <b>http://tinyurl.com/53kja</b>
 	$url = urlencode($url);
 	$html = file_get_contents('http://tinyurl.com/create.php?source=indexpage&url=' . $url . '&submit=Make+TinyURL!&alias=');
-	if(preg_match('/<b>http:\/\/tinyurl.com/[[:alphanum:]]+<\/b>/', $html, $matches))
-		return $matches[0];
+	if(preg_match('/<b>(http:\/\/tinyurl.com\/[a-zA-Z0-9]+)<\/b>/', $html, $matches))
+		return $matches[1];
 	return false;
 }
 
@@ -289,7 +289,7 @@ function rss_check()
 					sk_log("tiny: " . $tiny);
 					if($tiny)
 					{
-						$info = $sxmle->title . " " . $sxmle->link;
+						$info = $sxmle->title . " " . $tiny;
 						sk_say($chan, "[$name] $info");
 						if($pubDate > $maxPubDate)
 							$maxPubDate = $pubDate;
@@ -313,6 +313,13 @@ function rss_check()
 	return false;
 }
 
+
+//$tiny = make_tiny_url("http://google.com");
+//print_r($tiny);
+
+//exit(1);
+
+
 sk_initialize();
 sk_id('rawplug-rss');
 sk_name('RSS Feed Updates.');
@@ -331,7 +338,7 @@ if(store_is_locked())
 //sk_read_msg();
 //echo rss_add('#channel', 'name', 'http://live-clan.de/.xml/?type=rss');
 //echo rss_check();
-//exit(1);
+
 
 sleep(60);
 
