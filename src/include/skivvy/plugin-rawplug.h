@@ -108,6 +108,8 @@ private:
 
 	str_map names; // id -> name
 	str_map versions; // id -> version
+	str_map protocols; // id -> protocol
+	str_set responder_ids; // id of loaded rawplug tnat need a responder
 
 	typedef std::map<str, st_time_point> str_time_point_map;
 	typedef std::pair<const str, st_time_point> str_time_point_pair;

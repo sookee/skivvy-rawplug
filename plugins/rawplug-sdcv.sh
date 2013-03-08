@@ -71,36 +71,29 @@ do
 		;;
 		'!ox')
 			sk_read_msg
-			# !ox   tart  [2] \!ox\s+\w+(?:\s+\d+)?
-			# !ox "tart bart" [2] \!ox\s+"[^"]*?"(\s+\d+)?
 			
 			if [[ $(echo "${sk_msg[text]}"|grep -P -o '\!ox\s+\w+(\s+\d+)?') ]]; then
 				word=$(echo $(trim $(echo "${sk_msg[text]}"|cut -d ' ' -f 2-))|cut -d ' ' -f 1)
 				num=$(echo "${sk_msg[text]}"|grep -P -o '\d+')
-				echo word: $word
-				echo num : $num
 			elif [[ $(echo "${sk_msg[text]}"|grep -P -o '\!ox\s+"[^"]*?"(\s+\d+)?') ]]; then
 				word=$(echo "${sk_msg[text]}"|grep -P -o '"[^"]*"'|grep -P -o '[^"]+')
 				num=$(echo "${sk_msg[text]}"|grep -P -o '\d+')
-				echo word: $word
-				echo num : $num
 			else
-				echo bad
+				sk_log "command error: ${sk_msg[text]}"
 			fi
 			
 			if [[ -z $num ]]; then num=1; fi
 			((num2 = num + 1))
-			#echo  num: $num
-			#echo num2: $num2
 			text=$(sdcv -u "Oxford Advanced Learner's Dictionary" -n "$word")
-			#echo text: $text
-			text=${text//\*/\\*}
-			#echo text: $text
-			text=$(echo $text|cut -d "-" -f 5-)
-			#echo text: $text
-			text=$(echo $text|cut -d "$num" -f 2-|cut -d "$num2" -f 1)
-			#echo text: $text
-			sk_reply $num $text
+			
+			if [[ $(echo $text|grep -P -i -c "\-->Oxford Advanced Learner's Dictionary -->$word") == "0" ]]; then
+				sk_reply $word not found.
+			else
+				text=${text//\*/\\*}
+				text=$(echo $text|cut -d "-" -f 5-)
+				text=$(echo $text|cut -d "$num" -f 2-|cut -d "$num2" -f 1)
+				sk_reply $num $text
+			fi
 		;;
 		'!brit')
 			sk_read_msg
@@ -130,7 +123,7 @@ do
 		;;
 		'!calc')
 			sk_read_msg
-			sk_reply "=" $(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
+			sk_reply "07calc00: " $(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
 		;;
 		'!raw')
 			sk_read_msg

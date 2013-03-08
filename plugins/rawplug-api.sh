@@ -103,3 +103,8 @@ sk_reply()
 		sk_say $(sk_msg_get_nick) "$*"
 	fi
 }
+
+sk_log()
+{
+	echo "/log rawplug: $1"
+}

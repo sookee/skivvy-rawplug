@@ -63,6 +63,28 @@ using namespace __gnu_cxx;
 const str PLUGIN_DIR = "rawplug.dir";
 const str PLUGIN_EXE = "rawplug.exe";
 
+#ifndef DEBUG
+#define lock_guard_x(lock, mutex) lock_guard lock(mutex)
+#else
+struct scope_bomb
+{
+	const str id;
+	scope_bomb(const str& id): id(id)
+	{
+		sookee::bug::out() << "LOCK  : " << id << std::endl;
+	}
+	~scope_bomb()
+	{
+		sookee::bug::out() << "UNLOCK: " << id << std::endl;
+	}
+};
+#define lock_guard_x(lock, mutex) \
+	soss oss; \
+	oss << __func__ << ": " << __LINE__ << " (" << #mutex << ")" << std::endl; \
+	scope_bomb ____bomb_##lock(oss.str()); \
+	lock_guard lock(mutex)
+#endif
+
 bool log_report(const str& msg, bool err = true)
 {
 	log(msg);
@@ -84,15 +106,13 @@ bool RawplugIrcBotPlugin::responder(const str& id)
 	while(!done)
 	{
 		{
-//			lock_guard lock(mtx);
 			if(!sgl(*stdis[id], line))
 				return log_report("Error reading rawplug: " + id);
 		}
-		bug_var(line);
-		if(!line.find("/log"))
+		trim(line);
+		if(!line.find("/log") && line.size() > 4)
 		{
-			line = line.substr(4);
-			log(trim(line));
+			log(id << ": " << line.substr(4));
 		}
 		else
 		{
@@ -100,12 +120,13 @@ bool RawplugIrcBotPlugin::responder(const str& id)
 			bot.exec(line, &oss);
 		}
 	}
+	log("\t\tresponder closing down: " << id);
 	return true;
 }
 
 bool RawplugIrcBotPlugin::exec(const message& msg)
 {
-	lock_guard lock(mtx);
+	lock_guard_x(lock, mtx);
 	BUG_COMMAND(msg);
 	// send msg to appropriate plugin based upon msg.cmd
 	bool raw = false;
@@ -152,19 +173,13 @@ bool RawplugIrcBotPlugin::poll()
 	while(!done)
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
-		lock_guard lock(poll_mtx);
-//		siz now = std::time(0);
 		st_time_point now = st_clk::now(); //std::time(0);
-		//bug_var(now);
 		for(str_time_point_pair& p: pollnows)
 		{
-			//bug_var(p.first);
 			if(pollsecs[p.first] == std::chrono::seconds(0))
 				continue;
-			//bug_var(pollnows[p.first]);
 			if(now - pollnows[p.first] < pollsecs[p.first])
 				continue;
-			//bug_var(stdos[p.first]);
 			if(!stdos[p.first])
 				continue;
 			*stdos[p.first] << "poll" << std::endl;
@@ -177,12 +192,12 @@ bool RawplugIrcBotPlugin::poll()
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 {
 	bug_func();
-	lock_guard lock(mtx);
+	lock_guard_x(lock, mtx);
 	log("loading exec: " << exec);
 
 	pid_t pid;
-	int pipe_in[2]; /* This is the pipe with wich we write to the child process. */
-	int pipe_out[2]; /* This is the pipe with wich we read from the child process. */
+	int pipe_in[2]; // write to child
+	int pipe_out[2]; // red from child
 
 	if(pipe(pipe_in) || pipe(pipe_out))
 		return log_report(strerror(errno));
@@ -214,6 +229,7 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 
 		names[id] = name;
 		versions[id] = version;
+		protocols[id] = "0.0";
 
 		enum
 		{
@@ -222,7 +238,7 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 			, GOT_NAME = 0x04
 			, GOT_VERSION = 0x08
 			, GOT_HEADER = GOT_INITIALIZE|GOT_ID|GOT_NAME|GOT_VERSION
-			, GOT_ERROR = 0xFF
+			, GOT_ERROR = 0x8000
 		};
 
 		siz status = 0;
@@ -233,13 +249,17 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 			bool raw_cmd = false;
 			bool raw_mon = false;
 
-			if(line == "initialize")
+			if(!line.find("initialize"))
 			{
 				status |= GOT_INITIALIZE;
+				str protocol = "0.0";
+				if((siss(line) >> protocol >> protocol))
+					protocols[id] = protocol;
+
 			}
 			else if(!line.find("error:"))
 			{
-				status = GOT_ERROR;
+				status |= GOT_ERROR;
 				sgl(siss(line) >> line >> std::ws, line);
 				return log_report("ERROR: " + line);
 			}
@@ -309,16 +329,18 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 				if(!(siss(line) >> line >> secs))
 					secs = 5 * 60; // five minuted default
 				bug_var(secs);
-				lock_guard lock(poll_mtx);
+				lock_guard_x(lock, poll_mtx);
 				pollsecs[id] = std::chrono::seconds(secs);
-				pollnows[id]; //0; // time off last poll
+				pollnows[id]; //0; // time of last poll
 			}
 		}
 		if(status & GOT_HEADER) // all header info received
 		{
+//			lock_guard_x(lock, mtx);
 			stdis[id] = stdip;
 			stdos[id] = stdop;
-			futures.push_back(std::async(std::launch::async, [=]{ responder(id); }));
+//			futures.push_back(std::async(std::launch::async, [=]{ responder(id); }));
+			responder_ids.insert(id);
 		}
 	}
 	else
@@ -338,7 +360,7 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		str plugin_name = dir + "/" + exec;
 		chdir(dir.c_str());
 		execl(plugin_name.c_str(), plugin_name.c_str(), (char*)0);
-		return false; /* Only reached if execl() failed */
+		return false; // execl() failed
 	}
 
 	return true;
@@ -369,6 +391,8 @@ bool RawplugIrcBotPlugin::initialize()
 			}
 		}
 	}
+	for(const str& id: responder_ids)
+		futures.push_back(std::async(std::launch::async, [=]{ responder(id); }));
 	poll_fut = std::async(std::launch::async, [this]{ poll(); });
 
 	return true;
@@ -382,31 +406,56 @@ str RawplugIrcBotPlugin::get_version() const { return VERSION; }
 
 void RawplugIrcBotPlugin::exit()
 {
+	// 2013-03-01 15:26:18:   Raw Plugin Interface
+	// 2013-03-01 15:26:18: Colsing down rawplug poll
+	// 2013-03-01 15:26:18: Exiting from rawplug: rawplug-cpp
+	// 2013-03-01 15:26:18: Error reading rawplug: rawplug-cpp
+	// 2013-03-01 15:26:18: Exiting from rawplug: rawplug-sdcv
+	// 2013-03-01 15:26:18: Error reading rawplug: rawplug-sdcv
+	// 2013-03-01 15:26:18: Closing down rawplug responders
+	// 2013-03-01 15:26:18: Closing  input from rawplug: rawplug-cpp
+	// 2013-03-01 15:26:18: Closing  input from rawplug: rawplug-sdcv
+	// 2013-03-01 15:26:18: Closing output from rawplug: rawplug-cpp
+	// 2013-03-01 15:26:18: Closing output from rawplug: rawplug-sdcv
+
 	done = true;
+
+	log("Colsing down rawplug poll");
+	if(poll_fut.valid())
+		if(poll_fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
+			poll_fut.get();
+
+	log("Closing down rawplug responders");
+	std::vector<std::future_status> stati(futures.size());
+	std::vector<std::future_status>::iterator i = stati.begin();
+	for(std::future<void>& fut: futures)
+		if(fut.valid())
+			if((*(i++) = fut.wait_for(std::chrono::seconds(10))) == std::future_status::ready)
+				fut.get();
+
+	for(const std::future_status& fs: stati)
+		if(fs == std::future_status::timeout)
+			log("responder timaout...");
 
 	// Try clean exit
 	for(std::pair<const str, stdiostream_sptr>& p: stdos)
 		if(p.second.get())
+		{
+			log("Exiting from rawplug: " << p.first);
 			*p.second << "exit" << std::endl;
-
-	for(std::future<void>& fut: futures)
-		if(fut.valid())
-			if(fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
-				fut.get();
+		}
 
 	for(std::pair<const str, stdiostream_sptr>& p: stdis)
+	{
+		log("Closing  input from rawplug: " << p.first);
 		p.second->close();
+	}
 
 	for(std::pair<const str, stdiostream_sptr>& p: stdos)
+	{
+		log("Closing output from rawplug: " << p.first);
 		p.second->close();
-
-	for(std::future<void>& fut: futures)
-		if(fut.valid())
-			if(fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
-				fut.get();
-	if(poll_fut.valid())
-		if(poll_fut.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
-			poll_fut.get();
+	}
 }
 
 // INTERFACE: IrcBotMonitor
