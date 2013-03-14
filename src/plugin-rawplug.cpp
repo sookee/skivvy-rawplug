@@ -63,28 +63,6 @@ using namespace __gnu_cxx;
 const str PLUGIN_DIR = "rawplug.dir";
 const str PLUGIN_EXE = "rawplug.exe";
 
-#ifndef DEBUG
-#define lock_guard_x(lock, mutex) lock_guard lock(mutex)
-#else
-struct scope_bomb
-{
-	const str id;
-	scope_bomb(const str& id): id(id)
-	{
-		sookee::bug::out() << "LOCK  : " << id << std::endl;
-	}
-	~scope_bomb()
-	{
-		sookee::bug::out() << "UNLOCK: " << id << std::endl;
-	}
-};
-#define lock_guard_x(lock, mutex) \
-	soss oss; \
-	oss << __func__ << ": " << __LINE__ << " (" << #mutex << ")" << std::endl; \
-	scope_bomb ____bomb_##lock(oss.str()); \
-	lock_guard lock(mutex)
-#endif
-
 bool log_report(const str& msg, bool err = true)
 {
 	log(msg);
@@ -105,20 +83,32 @@ bool RawplugIrcBotPlugin::responder(const str& id)
 	str line;
 	while(!done)
 	{
-		{
-			if(!sgl(*stdis[id], line))
-				return log_report("Error reading rawplug: " + id);
-		}
+		if(!sgl(*stdis[id], line))
+			return log_report("Error reading rawplug: " + id);
 		trim(line);
+		if(line.empty())
+		{
+			log("rawplug: WARN: empty command.");
+			continue;
+		}
+		bug("responding to: " << line);
 		if(!line.find("/log") && line.size() > 4)
 		{
+			bug("/log:");
 			log(id << ": " << line.substr(4));
+		}
+		else if(!line.find("/bug") && line.size() > 4)
+		{
+			bug("/bug:");
+			bug(id << ": " << line.substr(4));
 		}
 		else
 		{
+			bug("/other:");
 			soss oss;
 			bot.exec(line, &oss);
 		}
+		bug("/done:");
 	}
 	log("\t\tresponder closing down: " << id);
 	return true;

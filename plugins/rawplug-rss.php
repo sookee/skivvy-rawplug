@@ -1,73 +1,6 @@
 #!/usr/bin/php -q
 <?php
-date_default_timezone_set('UTC');
-$stdi = fopen( 'php://stdin', 'r' );
-
-$sk_msg = array();
-
-function sk_say($who, $what)
-{
-	echo "/say $who $what\n";
-}
-
-function sk_reply($what)
-{
-	global $sk_msg;
-	if(substr($sk_msg['to'], 0, 1) == '#')
-	{
-		sk_say($sk_msg['to'], $what);
-	}
-	else
-	{
-		sk_say(preg_split('/[!]/', $sk_msg['from'])[0], $what);
-	}
-}
-
-function sk_log($msg) { echo "/log $msg\n"; }
-
-function sk_read_msg()
-{
-	global $sk_msg;
-	global $stdi;
-	$sk_msg['line'] = fgets($stdi);
-	$sk_msg['from'] = fgets($stdi);
-	$sk_msg['cmd'] = fgets($stdi);
-	$sk_msg['params'] = fgets($stdi);
-	$sk_msg['to'] = fgets($stdi);
-	$sk_msg['text'] = fgets($stdi);
-}
-
-function sk_msg_get_nick()
-{
-	global $sk_msg;
-	$bits = preg_split('!', $sk_msg['from']);
-	return $bits[0];
-}
-
-## Initialization functions
-
-function sk_initialize() { echo "initialize\n"; }
-function sk_id($id) { echo "id: $id\n"; }
-function sk_name($name) { echo "name: $name\n"; }
-function sk_version($version) { echo "version: $version\n"; }
-function sk_add_command($cmd, $help)
-{
-	echo "add_command\n";
-	echo "$cmd\n";
-	echo "$help\n";
-	echo "end_command\n";
-}
-function sk_add_raw_command($cmd, $help)
-{
-	echo "add_raw_command\n";
-	echo "$cmd\n";
-	echo "$help\n";
-	echo "end_command\n";
-}
-function sk_add_monitor() { echo "add_monitor\n"; }
-function sk_add_raw_monitor() { echo "add_raw_monitor\n"; }
-function sk_poll_me($secs) { echo  "poll_me: $secs\n"; }
-function sk_end_initialize() { echo "end_initialize\n"; }
+include_once 'rawplug-api.php';
 
 function make_tiny_url($url)
 {
@@ -94,22 +27,31 @@ function rss_has($qchan, $qname, &$res)
 {
 	global $store_file;
 
+	sk_bug('rss_has()');
+	sk_bug($qchan);
+	sk_bug($qname);
+	sk_bug($res);
+	sk_bug($store_file);
+	
 	if(!($ifp = fopen($store_file, 'r')))
 	{
 		sk_log('Unable to open input file: ' . $store_file);
 		return false;
 	}
 	
-	if(!floc($ifp, LOCK_SH))
+	if(!flock($ifp, LOCK_SH))
 	{
 		sk_log('Unable to lock input file: ' . $store_file);
 		fclose($ifp);
 		return false;
 	}
+	
+	sk_bug('checking');
 		
 	$res = false;
 	while(($line = fgets($ifp)))
 	{
+		sk_bug("\tline: $line");
 		$line = trim($line);
 		if(strlen($line) == 0)
 			continue;
@@ -130,32 +72,44 @@ function rss_has($qchan, $qname, &$res)
 	flock($ifp, LOCK_UN);
 	fclose($ifp);
 	
-	return $res;
+	return true;
 }
 
 function rss_add($chan, $name, $url)
 {
 	global $store_file;
 	
+	sk_bug('rss_add()');
+	sk_bug($chan);
+	sk_bug($name);
+	sk_bug($url);
+	sk_bug($store_file);
+	
+	sk_log("rss: adding $name to $chan: $url");
+	
 	$res = false;
 	if(!rss_has($chan, $name, $res))
 		return false;
-
+	
+	sk_bug('checked');
+	
 	if($res)
 	{
 		sk_reply('RSS feed: ' . $name . ' already exists.');
 		return false;
 	}
 	
+	sk_bug('adding');
+
 	if(!($ofp = fopen($store_file, 'a')))
 	{
 		sk_log('Unable to open output file: ' . $store_file);
 		return false;
 	}
 	
-	if(!flock($afp, LOCK_EX))
+	if(!flock($ofp, LOCK_EX))
 	{
-		sk_log('Unable to open obtail lock: ' . $store_file);
+		sk_log('Unable to open obtain lock: ' . $store_file);
 		fclose($ofp);
 		return false;
 	}
@@ -165,6 +119,100 @@ function rss_add($chan, $name, $url)
 	fputs($ofp, 'feed: ' . $chan . '|' . $name . '|' . true . '|' . strval($pubDate->getTimestamp()) . '|' . $url . "\n");
 	flock($ofp, LOCK_UN);
 	fclose($ofp);
+	
+	sk_log('done');
+	
+	return true;
+}
+
+function rss_del($chan, $name)
+{
+	global $store_file;
+
+	sk_log('rss_del()');
+
+	if(!($fp = fopen($store_file, 'c+')))
+	{
+		sk_log('Unable to open input file: ' . $store_file);
+		return false;
+	}
+
+	if(!flock($fp, LOCK_EX))
+	{
+		sk_log('error: failed to lock ' . $store_file);
+		fclose($fp);
+		return false;
+	}
+
+	$store_temp = array();
+
+	while(($line = fgets($fp)))
+	{
+		$line = trim($line);
+		if(strlen($line) == 0)
+			continue;
+
+		$temp = preg_split('/:\s+/', $line, 2);
+
+		if($temp[0] != 'feed')
+			continue;
+
+		$temp = preg_split('/\|/', $temp[1]);
+
+		if($temp[0] != $chan || $temp[1] != $name)
+			$store_temp[] = $line;
+	}
+
+	ftruncate($fp, 0);
+	foreach ($store_temp as $line)
+		fputs($fp, $line . "\n");
+	flock($fp, LOCK_UN);
+	fclose($fp);
+
+	return true;
+}
+
+function rss_list($chan)
+{
+	global $store_file;
+
+	sk_bug('rss_list()');
+	sk_bug($chan);
+	sk_bug($store_file);
+	
+	if(!($fp = fopen($store_file, 'r')))
+	{
+		sk_log('Unable to open input file: ' . $store_file);
+		return false;
+	}
+
+	if(!flock($fp, LOCK_SH))
+	{
+		sk_log('error: failed to lock ' . $store_file);
+		fclose($fp);
+		return false;
+	}
+
+	$feeds = array();
+	while(($line = fgets($fp)))
+	{
+		$line = trim($line);
+		if(strlen($line) == 0)
+			continue;
+
+		$temp = preg_split('/:\s+/', $line, 2);
+
+		if($temp[0] != 'feed')
+			continue;
+
+		$temp = preg_split('/\|/', $temp[1]);
+
+		if($temp[0] == $chan)
+			$feeds[] = $temp[1];
+	}
+	
+	if(count($feeds) > 0)
+		sk_reply(join(", ", $feeds));
 	
 	return true;
 }
@@ -256,7 +304,13 @@ function rss_check()
 	return true;
 }
 
-if(!file_exists($store_file))
+if(file_exists($store_file))
+{
+	$ifs = fopen($store_file, 'r');
+	flock($store_file, LOCK_UN);
+	fclose($ifs);
+}
+else
 {
 	$ofs = fopen($store_file, 'w');
 	fclose($ofs);
@@ -266,16 +320,16 @@ sk_initialize();
 sk_id('rawplug-rss');
 sk_name('RSS Feed Updates.');
 sk_version('0.01');
-sk_add_command('!rss', '!rss add|del <name> <url>');
+sk_add_command('!rss', '!rss add <name> <url> | del <name> | list');
 sk_poll_me(5 * 60); // receive poll every 10 minutes
 sk_end_initialize();
 
-sleep(60);
+if(php_sapi_name() != 'cli')
+	sleep(60);
 
 while(($line = fgets($stdi)) != false)
 {
 	$line = trim($line);
-	//echo "line: $line";
 	switch($line)
 	{
 		case 'exit':
@@ -290,16 +344,20 @@ while(($line = fgets($stdi)) != false)
 			//!rss del <name>
 			//!rss list
 			sk_read_msg();
-			
 			$args = preg_split('/\s+/', $sk_msg['text']);
-			if(count($args) == 2 && $args[1] == 'list')
-				do_list($chan);
-			else if(count($args) == 3 && $args[1] == 'del')
-				so_del($chan, $args[2]);
-			else if(count($args) == 4 && $args[1] == 'add')
-				so_add($chan, $args[2], $args[3]);
+			sk_bug_msg();
+			sk_bug("\targs: " . count($args));
+			$a = 0;
+			foreach ($args as $arg)
+			{sk_bug("\t\targ $a: $arg"); $a++;}
+			if(count($args) == 3 && $args[2] == 'list')
+				rss_list($sk_msg['to']);
+			else if(count($args) == 4 && $args[2] == 'del')
+				rss_del($sk_msg['to'], $args[3]);
+			else if(count($args) == 5 && $args[2] == 'add')
+				rss_add($sk_msg['to'], $args[3], $args[4]);
 			else
-				sk_reply("usage: !rss (list | sub <name> | add <name> <url>)");
+				sk_say($sk_msg['to'], 'usage: !rss (list | sub <name> | add <name> <url>)');
 			break;
 
 		default:
