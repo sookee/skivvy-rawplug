@@ -2,7 +2,14 @@
 <?php
 include_once 'rawplug-api.php';
 
+// http://tinyurl.com/api-create.php?url=http://google.com
+
 function make_tiny_url($url)
+{
+	return file_get_contents('http://tinyurl.com/api-create.php?url=' . urlencode($url));
+}
+
+function make_tiny_url_x($url)
 {
 	$url = urlencode($url);
 	$html = file_get_contents('http://tinyurl.com/create.php?source=indexpage&url=' . $url . '&submit=Make+TinyURL!&alias=');

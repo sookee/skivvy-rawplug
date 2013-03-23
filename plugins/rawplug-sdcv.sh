@@ -54,7 +54,7 @@ sk_version "0.01"
 sk_add_command "!ox" "Oxford Adv. Learners Dict. [abbreviated]"
 sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 sk_add_command "!php" "PHP function reference [abbreviated]"
-sk_add_command "!calc" "Calculator"
+sk_add_command "!calc" "!calc <expression> - Calculator (same as bc command)"
 sk_add_command "!raw" "Rawplug Test Function"
 #sk_poll_me 60
 sk_end_initialize
@@ -123,7 +123,7 @@ do
 		;;
 		'!calc')
 			sk_read_msg
-			sk_reply "07calc00: " $(echo "${sk_msg[text]}"|cut -d " " -f 2-|bc)
+			sk_reply "07calc00: " $(echo "${sk_msg[text]}"|cut -d " " -f 2-|timeout 5 bc -l)
 		;;
 		'!raw')
 			sk_read_msg
