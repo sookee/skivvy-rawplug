@@ -56,6 +56,7 @@ sk_add_command "!brit" "Britanica Concise Info [abbreviated]"
 sk_add_command "!php" "PHP function reference [abbreviated]"
 sk_add_command "!calc" "!calc <expression> - Calculator (same as bc command)"
 sk_add_command "!raw" "Rawplug Test Function"
+sk_add_command "!ulimit" "Display limits"
 #sk_poll_me 60
 sk_end_initialize
 
@@ -128,6 +129,10 @@ do
 		'!raw')
 			sk_read_msg
 			sk_reply "Do I reply to the right place?"
+		;;
+		'!ulimit')
+			sk_read_msg
+			sk_reply $(ulimit -a)
 		;;
 		*)
 			# errors

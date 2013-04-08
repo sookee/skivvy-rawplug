@@ -42,9 +42,14 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <stdio.h>
 #include <stdlib.h>
 
+// ulimit stuff
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <ext/stdio_filebuf.h>
 
 #include <sookee/str.h>
+#include <sookee/bug.h>
 
 #include <skivvy/utils.h>
 #include <skivvy/logrep.h>
@@ -58,6 +63,7 @@ PLUGIN_INFO("rawplug", "Raw Plugin Interface", "0.2");
 using namespace skivvy::types;
 using namespace skivvy::utils;
 using namespace sookee::string;
+using namespace sookee::bug;
 using namespace __gnu_cxx;
 
 const str PLUGIN_DIR = "rawplug.dir";
@@ -116,7 +122,8 @@ bool RawplugIrcBotPlugin::responder(const str& id)
 
 bool RawplugIrcBotPlugin::exec(const message& msg)
 {
-	lock_guard_x(lock, mtx);
+//	lock_guard_x(lock, mtx);
+	lock_guard lock(mtx);
 	BUG_COMMAND(msg);
 	// send msg to appropriate plugin based upon msg.cmd
 	bool raw = false;
@@ -182,7 +189,8 @@ bool RawplugIrcBotPlugin::poll()
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 {
 	bug_func();
-	lock_guard_x(lock, mtx);
+//	lock_guard_x(lock, mtx);
+	lock_guard lock(mtx);
 	log("loading exec: " << exec);
 
 	pid_t pid;
@@ -199,6 +207,14 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	if(pid)
 	{
 		// parent
+
+//		rlimit olim;
+//		rlimit nlim;
+//		nlim.rlim_max = 20;
+//		nlim.rlim_cur = 20;
+//
+//		prlimit(pid, RLIMIT_NPROC, &nlim, &olim);
+
 		stdiostream_sptr stdip(new stdiostream(pipe_out[0], std::ios::in));
 		stdiostream_sptr stdop(new stdiostream(pipe_in[1], std::ios::out));
 
@@ -319,7 +335,8 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 				if(!(siss(line) >> line >> secs))
 					secs = 5 * 60; // five minuted default
 				bug_var(secs);
-				lock_guard_x(lock, poll_mtx);
+//				lock_guard_x(lock, poll_mtx);
+				lock_guard lock(poll_mtx);
 				pollsecs[id] = std::chrono::seconds(secs);
 				pollnows[id]; //0; // time of last poll
 			}
@@ -336,6 +353,15 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	else
 	{
 		// child
+
+		rlimit lim;
+		if(!getrlimit(RLIMIT_NPROC, &lim))
+		{
+			lim.rlim_max += 10;
+			lim.rlim_cur += 10;
+			setrlimit(RLIMIT_NPROC, &lim);
+		}
+
 		close(1);
 		dup(pipe_out[1]); // lowest unused fd
 
