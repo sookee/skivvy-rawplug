@@ -44,9 +44,11 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <ext/stdio_filebuf.h>
 
+#include <sookee/types.h>
+#include <skivvy/utils.h>
 #include <skivvy/logrep.h>
 #include <skivvy/ios.h>
-#include <skivvy/str.h>
+#include <sookee/str.h>
 
 namespace skivvy { namespace rawplug {
 
@@ -55,7 +57,7 @@ PLUGIN_INFO("rawplug", "Raw Plugin Interface", "0.2");
 
 using namespace skivvy::types;
 using namespace skivvy::utils;
-using namespace skivvy::string;
+using namespace sookee::string;
 using namespace __gnu_cxx;
 
 const str PLUGIN_DIR = "rawplug.dir";
