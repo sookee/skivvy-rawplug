@@ -48,6 +48,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <ext/stdio_filebuf.h>
 
+#include <sookee/types.h>
 #include <sookee/str.h>
 #include <sookee/bug.h>
 
@@ -60,7 +61,7 @@ namespace skivvy { namespace rawplug {
 IRC_BOT_PLUGIN(RawplugIrcBotPlugin);
 PLUGIN_INFO("rawplug", "Raw Plugin Interface", "0.2");
 
-using namespace skivvy::types;
+using namespace sookee::types;
 using namespace skivvy::utils;
 using namespace sookee::string;
 using namespace sookee::bug;
@@ -189,7 +190,7 @@ bool RawplugIrcBotPlugin::poll()
 bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 {
 	bug_func();
-//	lock_guard_x(lock, mtx);
+
 	lock_guard lock(mtx);
 	log("loading exec: " << exec);
 
@@ -251,7 +252,7 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 
 		while(sgl(stdi, line) && line != "end_initialize")
 		{
-			bug_var(line);
+			//bug_var(line);
 			bool raw_cmd = false;
 			bool raw_mon = false;
 
