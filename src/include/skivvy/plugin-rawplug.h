@@ -1,9 +1,6 @@
-#pragma once
 #ifndef _SKIVVY_PLUGIN_RAWPLUG_H_
 #define _SKIVVY_PLUGIN_RAWPLUG_H_
 /*
- * plugin-rawplug.h
- *
  *  Created on: 10 Dec 2012
  *      Author: oaskivvy@gmail.com
  */
@@ -39,44 +36,12 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <cstdlib>
 #include <utility>
 
-#include <ext/stdio_filebuf.h>
+#include <sookee/ios.h>
 
 namespace skivvy { namespace rawplug {
 
-using namespace __gnu_cxx;
 using namespace skivvy::ircbot;
-
-typedef stdio_filebuf<char> stdiobuf;
-typedef stdio_filebuf<wchar_t> wstdiobuf;
-
-template<typename Char>
-class basic_stdiostream
-: public std::basic_iostream<Char>
-{
-public:
-	typedef Char char_type;
-	typedef std::basic_iostream<char_type> stream_type;
-	typedef stdio_filebuf<char_type> buf_type;
-
-protected:
-	buf_type buf;
-
-public:
-	basic_stdiostream(int fd, const std::ios::openmode& mode)
-	: stream_type(&buf)
-	, buf(fd, mode)
-	{
-	}
-
-	void close()
-	{
-		::close(buf.fd()); // interrupt blocking?
-	}
-};
-
-typedef basic_stdiostream<char> stdiostream;
-typedef basic_stdiostream<wchar_t> wstdiostream;
-
+using namespace sookee::ios;
 
 /**
  * PROPERTIES: (Accesed by: bot.props["property"])
@@ -92,8 +57,6 @@ public:
 	typedef std::vector<FILE*> FILE_vec;
 
 private:
-	//FILE_vec pipe;
-
 	std::mutex mtx;
 
 	typedef std::shared_ptr<stdiostream> stdiostream_sptr;
@@ -102,19 +65,20 @@ private:
 	str_map raw_cmds; // !rawcmd -> id
 	str_set monitors; // id, id, id
 	str_set raw_monitors; // id, id, id
+
 	std::map<str, stdiostream_sptr> stdis; // id -> stdiostream*
 	std::map<str, stdiostream_sptr> stdos; // id -> stdiostream*
+
 	std::vector<std::future<void>> futures;
 
 	str_map names; // id -> name
 	str_map versions; // id -> version
 	str_map protocols; // id -> protocol
+
 	str_set responder_ids; // id of loaded rawplug tnat need a responder
 
 	typedef std::map<str, st_time_point> str_time_point_map;
-	typedef std::pair<const str, st_time_point> str_time_point_pair;
 	typedef std::map<str, std::chrono::seconds> str_sec_map;
-	typedef std::pair<const str, std::chrono::seconds> str_sec_pair;
 
 	std::mutex poll_mtx;
 	std::future<void> poll_fut;

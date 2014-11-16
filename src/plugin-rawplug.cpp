@@ -63,7 +63,7 @@ PLUGIN_INFO("rawplug", "Raw Plugin Interface", "0.2");
 
 using namespace sookee::types;
 using namespace skivvy::utils;
-using namespace sookee::string;
+using namespace sookee::utils;
 using namespace sookee::bug;
 using namespace __gnu_cxx;
 
@@ -130,7 +130,7 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 	bool raw = false;
 
 	str id;
-	str_map::iterator it;
+	str_map_iter it;
 	if((it = cmds.find(msg.get_user_cmd())) != cmds.end())
 		id = it->second;
 	else if((it = raw_cmds.find(msg.get_user_cmd())) != raw_cmds.end() && (raw = true))
@@ -147,6 +147,7 @@ bool RawplugIrcBotPlugin::exec(const message& msg)
 
 	stdo << msg.get_user_cmd() << std::endl;
 	stdo << msg.line << std::endl;
+
 	if(!raw)
 	{
 		str_vec middles;
@@ -172,7 +173,7 @@ bool RawplugIrcBotPlugin::poll()
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		st_time_point now = st_clk::now(); //std::time(0);
-		for(str_time_point_pair& p: pollnows)
+		for(auto&& p: pollnows)
 		{
 			if(pollsecs[p.first] == std::chrono::seconds(0))
 				continue;
@@ -195,10 +196,10 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	log("loading exec: " << exec);
 
 	pid_t pid;
-	int pipe_in[2]; // write to child
-	int pipe_out[2]; // red from child
+	int pipe_i[2]; // write to child
+	int pipe_o[2]; // read from child
 
-	if(pipe(pipe_in) || pipe(pipe_out))
+	if(pipe(pipe_i) || pipe(pipe_o))
 		return log_report(strerror(errno));
 
 	/* Attempt to fork and check for errors */
@@ -209,23 +210,16 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	{
 		// parent
 
-//		rlimit olim;
-//		rlimit nlim;
-//		nlim.rlim_max = 20;
-//		nlim.rlim_cur = 20;
-//
-//		prlimit(pid, RLIMIT_NPROC, &nlim, &olim);
+		stdiostream_sptr stdip(new stdiostream(pipe_o[0], std::ios::in));
+		stdiostream_sptr stdop(new stdiostream(pipe_i[1], std::ios::out));
 
-		stdiostream_sptr stdip(new stdiostream(pipe_out[0], std::ios::in));
-		stdiostream_sptr stdop(new stdiostream(pipe_in[1], std::ios::out));
-
-		close(pipe_out[1]);
-		close(pipe_in[0]);
+		close(pipe_o[1]);
+		close(pipe_i[0]);
 
 		if(!stdip.get())
-			return log_report(("Unable to create stdiostream object."));
+			return log_report("Unable to create stdiostream object.");
 		if(!stdop.get())
-			return log_report(("Unable to create stdiostream object."));
+			return log_report("Unable to create stdiostream object.");
 
 		stdiostream& stdi = *stdip.get();
 		//stdiostream& stdo = *stdop.get();
@@ -364,15 +358,15 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		}
 
 		close(1);
-		dup(pipe_out[1]); // lowest unused fd
+		dup(pipe_o[1]); // lowest unused fd
 
 		close(0);
-		dup(pipe_in[0]); // lowest unused fd
+		dup(pipe_i[0]); // lowest unused fd
 
-		close(pipe_out[0]);
-		close(pipe_out[1]);
-		close(pipe_in[0]);
-		close(pipe_in[1]);
+		close(pipe_o[0]);
+		close(pipe_o[1]);
+		close(pipe_i[0]);
+		close(pipe_i[1]);
 
 		str plugin_name = dir + "/" + exec;
 		chdir(dir.c_str());

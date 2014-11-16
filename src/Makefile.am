@@ -56,7 +56,7 @@ plugin_library_LTLIBRARIES =  \
 	skivvy-plugin-rawplug.la
 
 # IrcBot plugins
-skivvy_plugin_rawplug_la_SOURCES = plugin-rawplug.cpp
+skivvy_plugin_rawplug_la_SOURCES = plugin-rawplug.cpp $(plugin_include_HEADERS)
 skivvy_plugin_rawplug_la_LDFLAGS = -module -avoid-version $(PLUGIN_FLAGS)
 skivvy_plugin_rawplug_la_LIBADD =  $(LIB_SOOKEE) $(LIB_SKIVVY) -L.libs
 
