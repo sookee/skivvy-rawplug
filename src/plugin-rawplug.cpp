@@ -210,8 +210,8 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 	{
 		// parent
 
-		stdiostream_sptr stdip(new stdiostream(pipe_o[0], std::ios::in));
-		stdiostream_sptr stdop(new stdiostream(pipe_i[1], std::ios::out));
+		stdiostream_sptr stdip(new stdio_stream(pipe_o[0], std::ios::in));
+		stdiostream_sptr stdop(new stdio_stream(pipe_i[1], std::ios::out));
 
 		close(pipe_o[1]);
 		close(pipe_i[0]);
@@ -221,7 +221,7 @@ bool RawplugIrcBotPlugin::open_plugin(const str& dir, const str& exec)
 		if(!stdop.get())
 			return log_report("Unable to create stdiostream object.");
 
-		stdiostream& stdi = *stdip.get();
+		stdio_stream& stdi = *stdip.get();
 		//stdiostream& stdo = *stdop.get();
 
 		str skip, line, id, name, version;

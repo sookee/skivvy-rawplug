@@ -59,7 +59,7 @@ public:
 private:
 	std::mutex mtx;
 
-	typedef std::shared_ptr<stdiostream> stdiostream_sptr;
+	typedef std::shared_ptr<stdio_stream> stdiostream_sptr;
 
 	str_map cmds; // !cmd -> id
 	str_map raw_cmds; // !rawcmd -> id
